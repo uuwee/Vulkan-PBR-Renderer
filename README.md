@@ -4,7 +4,7 @@ Physically based renderer demo written using Vulkan.
 
 ## Building
 
-You need to have the [Vulkan SDK](https://vulkan.lunarg.com/) and [Visual Studio 2017 (or higher)](https://visualstudio.microsoft.com/) installed.
+You need to have the [Vulkan SDK](https://vulkan.lunarg.com/) (tested on 1.3.268) and [Visual Studio 2017 (or higher)](https://visualstudio.microsoft.com/) installed.
 
 1. Open `x64 Native Tools Command Prompt for VS <year>` from the Windows Start Menu. Within this terminal, `cd` into the repository root directory.
 2. Run `cl gen_project_files.c && gen_project_files`.
