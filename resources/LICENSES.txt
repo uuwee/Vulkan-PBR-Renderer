@@ -1,0 +1,12 @@
+I'm using the following assets for educational purposes, credit goes to their creators:
+
+Cerberus by Andrew Maximov:
+https://youtu.be/Tt30zzBQb3w
+
+Metal-Rough Spheres by Ed Mackey (Analytical Graphics):
+https://github.com/KhronosGroup/glTF-Sample-Models/tree/main/2.0/MetalRoughSpheres
+
+Shipyard cranes track HDRI by hdrmaps.com:
+https://hdrmaps.com/shipyard-cranes-track/
+
+UnitCube by me

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Custom|x64">
+      <Configuration>Custom</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{74351B6A-6993-42A7-B813-CA03FB9C7667}</ProjectGuid>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Custom|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Custom|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Custom|x64'">
+    <OutDir>./</OutDir>
+    <IntDir>./triangle/</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Custom|x64'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>
+      </PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../;C:\VulkanSDK\1.3.268.0/Include;</AdditionalIncludeDirectories>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <Optimization>Disabled</Optimization>
+      <ExceptionHandling>false</ExceptionHandling>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <ExternalWarningLevel>Level3</ExternalWarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <AdditionalOptions>/wd4101 /w14062 /w14456 </AdditionalOptions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>C:\VulkanSDK\1.3.268.0/Lib/vulkan-1.lib;C:\VulkanSDK\1.3.268.0/Lib/GenericCodeGen.lib;C:\VulkanSDK\1.3.268.0/Lib/glslang.lib;C:\VulkanSDK\1.3.268.0/Lib/MachineIndependent.lib;C:\VulkanSDK\1.3.268.0/Lib/OGLCompiler.lib;C:\VulkanSDK\1.3.268.0/Lib/OSDependent.lib;C:\VulkanSDK\1.3.268.0/Lib/SPIRV.lib;C:\VulkanSDK\1.3.268.0/Lib/SPIRV-Tools.lib;C:\VulkanSDK\1.3.268.0/Lib/SPIRV-Tools-diff.lib;C:\VulkanSDK\1.3.268.0/Lib/SPIRV-Tools-link.lib;C:\VulkanSDK\1.3.268.0/Lib/SPIRV-Tools-lint.lib;C:\VulkanSDK\1.3.268.0/Lib/SPIRV-Tools-opt.lib;C:\VulkanSDK\1.3.268.0/Lib/SPIRV-Tools-reduce.lib;C:\VulkanSDK\1.3.268.0/Lib/SPIRV-Tools-shared.lib;C:\VulkanSDK\1.3.268.0/Lib/glslang-default-resource-limits.lib;</AdditionalDependencies>
+      <AdditionalOptions>/IGNORE:4099 </AdditionalOptions>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="../src/demo_triangle/triangle.cpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
