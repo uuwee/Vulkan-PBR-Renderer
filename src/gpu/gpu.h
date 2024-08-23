@@ -1,15 +1,3 @@
-// Fire GPU - graphics API abstraction layer
-//
-// Author: Eero Mutka
-// Version: 0
-// Date: 25 March, 2024
-//
-// This code is released under the MIT license (https://opensource.org/licenses/MIT).
-//
-// Headers that must have been included before this file:
-// - "fire_ds.h"
-//
-
 #ifndef GPU_INCLUDED
 #define GPU_INCLUDED
 
@@ -23,9 +11,6 @@ typedef struct GPU_PipelineLayout GPU_PipelineLayout;
 typedef struct GPU_DescriptorSet GPU_DescriptorSet;
 typedef struct GPU_Sampler GPU_Sampler;
 typedef struct GPU_DescriptorArena GPU_DescriptorArena;
-
-// A graph is a collection of tasks that are executed in parallel.
-// A task is a list of operations that are executed in order.
 typedef struct GPU_Graph GPU_Graph;
 
 typedef struct GPU_String {
@@ -46,26 +31,6 @@ typedef struct GPU_String {
 #define GPU_ARENA_ALLOCATE(ARENA, SIZE) (char*)DS_ArenaPush(ARENA, SIZE)
 
 #define GPU_ArrayCount(ARRAY) sizeof(ARRAY) / sizeof(ARRAY[0])
-
-/*typedef struct GPU_Options {
-	// Allocation strategy idea:
-	// We have a chain of memory blocks that grow exponentially in size, and each holding its own generic offset-allocator.
-	// When allocating a resource, first we check if it's bigger than the largest block in the chain, and if so, allocate it directly through vulkan.
-	// Otherwise, start from the smallest block, and stop until allocation succeeds. If it fails, we make a new block at the end.
-
-	// One alternative allocation strategy would be arenas; e.g. have a block size of 4MB and hand these out to arenas. Resource freeing would be done
-	// automatically when freeing the arena. Pro: simplicity, Con: having lots of small allocations with their own lifetimes would need to be managed by the user.
-
-	uint32_t first_memory_block_size;
-	uint32_t first_memory_block_max_allocations;
-	uint32_t memory_block_grow_factor;
-} GPU_Options;
-
-const static GPU_Options GPU_Options_defaults = {
-	MIB(64), // first_memory_block_size
-	1024,      // first_memory_block_max_allocations
-	200,       // memory_block_grow_factor
-};*/
 
 typedef struct GPU_FormatInfo {
 	uint32_t block_extent;  // normally 1, but for example BC1_RGB has this 4

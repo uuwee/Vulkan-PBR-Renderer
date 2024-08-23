@@ -1,13 +1,3 @@
-// Fire GPU, Vulkan Backend
-// This file is part of the Fire GPU library, see "fire_gpu.h"
-// 
-// Headers that must have been included before this file:
-// - "fire_ds.h"
-// - "fire_gpu.h"
-// - "vulkan.h" (from the Vulkan SDK)
-// - "glslang/Include/glslang_c_interface.h" (from the Vulkan SDK)
-//
-
 #ifndef GPU_CHECK_OVERRIDE
 #include <assert.h>
 // GPU_Check is used to check for correct API usage
