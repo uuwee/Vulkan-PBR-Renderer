@@ -25,8 +25,7 @@ static void AddVulkanSDK(BUILD_Project* p, const char* vk_sdk) {
 int main() {
 	const char* vk_sdk = getenv("VULKAN_SDK");
 	if (vk_sdk == NULL) {
-		printf("ERROR: Vulkan SDK not found (\"VULKAN_SDK\" environment variable is missing).\n"
-			"    Example projects which use Fire GPU won't be generated.");
+		printf("ERROR: Vulkan SDK not found (\"VULKAN_SDK\" environment variable is missing).\n");
 		return 0;
 	}
 	
