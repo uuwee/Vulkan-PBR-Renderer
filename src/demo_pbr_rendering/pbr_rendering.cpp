@@ -304,7 +304,9 @@ static bool ReloadMesh(Mesh* result, DS_Arena* temp_arena, const char* filepath,
 	
 	GPU_DestroyBuffer(result->index_buffer);
 	result->index_buffer = GPU_MakeBuffer((uint32_t)index_buffer.length * sizeof(*index_buffer.data), GPU_BufferFlag_GPU, index_buffer.data);
-
+	
+	cgltf_free(data);
+	
 	return true;
 }
 
