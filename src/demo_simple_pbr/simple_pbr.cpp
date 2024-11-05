@@ -1,6 +1,6 @@
 
 // Change this to "1" if you want to load a gun model instead of PBR spheres
-#if 0
+#if 1
 #define MESH_WORLD_PATH                 "../resources/Cerberus.glb"
 #define TEX_BASE_COLOR_PATH             "../resources/Cerberus_Albedo.tga"
 #define TEX_AO_ROUGHNESS_METALLIC_PATH  "../resources/Cerberus_ORM.tga"

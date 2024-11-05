@@ -55,6 +55,9 @@ static const HMM_Vec3 world_import_offset = {0, 25.f, 0};
 
 // ----------------
 
+#define MESH_WORLD_PATH  "../resources/SunTemple/SunTemple.fbx"
+//#define MESH_WORLD_PATH  "(path to bistro)/Bistro_v5_2/BistroExterior.fbx"
+
 // Define all your assets here!
 // To add a new automatically hotreloaded asset, add it to this list. You can then access it through ASSETS.[name], e.g. ASSETS.TEX_BASE_COLOR
 #define ASSETS_LIST\
@@ -72,16 +75,7 @@ static const HMM_Vec3 world_import_offset = {0, 25.f, 0};
 	ASSET(SHADER_GEN_IRRADIANCE_MAP,       "../src/demo_global_illumination_pbr/gen_irradiance_map.glsl")\
 	ASSET(SHADER_GEN_PREFILTERED_ENV_MAP,  "../src/demo_global_illumination_pbr/gen_prefiltered_env_map.glsl")\
 	ASSET(SHADER_GEN_BRDF_INTEGRATION_MAP, "../src/demo_global_illumination_pbr/gen_brdf_integration_map.glsl")\
-	ASSET(MESH_WORLD,                      "C:/art_library/SunTemple/SunTempleFixed.fbx")\
-// --
-/*	
-	ASSET(MESH_WORLD,                      "C:/art_library/Bistro_v5_2/BistroExterior.fbx")\
-	ASSET(MESH_WORLD,                      "C:/EeroSampleAssets/basic/monkey.fbx")\
-	ASSET(MESH_WORLD,                      "C:/EeroSampleAssets/Cerberus/CerberusTest.fbx")\
-	ASSET(MESH_WORLD,                      "C:/Users/Eero/Desktop/3D_doodles/RoundCubeExport.fbx")\
-	ASSET(MESH_WORLD,                      "C:/EeroSampleAssets/basic/fbxtest.fbx")\
-	ASSET(SHADER_SKYBOX,                   "../examples/my_renderer/skybox_shader.glsl")\
-*/
+	ASSET(MESH_WORLD,                      MESH_WORLD_PATH)\
 
 typedef int AssetIndex;
 	
@@ -1281,7 +1275,7 @@ int main() {
 	for (int i = 0; i < DS_ArrayCount(r->is_outdated); i++) r->is_outdated[i] = true;
 
 	Camera camera = {};
-	camera.pos = {0.f, -1.5f, 0.f};
+	camera.pos = {0.f, 5.f, 5.f};
 	
 	struct {
 		HMM_Mat4 clip_space_from_world;
