@@ -16,7 +16,7 @@ static void Input_OS_BeginEvents(Input_OS_State* state, Input_Frame* frame, DS_A
 
 static void Input_OS_EndEvents(Input_OS_State* state) {
 	state->frame->events = state->events.data;
-	state->frame->events_count = state->events.length;
+	state->frame->events_count = state->events.count;
 }
 
 static void Input_OS_AddEvent(Input_OS_State* state, const OS_WINDOW_Event* event) {

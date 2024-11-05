@@ -25,8 +25,8 @@ __declspec(dllimport) int64_t __stdcall GetWindowLongPtrW(HWND hWnd, int nIndex)
 
 // ----------------------------------------------------------------------------
 
-#ifndef GPU_ENABLE_VALIDATION
-#define GPU_ENABLE_VALIDATION true
+#ifndef GPU_VALIDATION_ENABLED
+#define GPU_VALIDATION_ENABLED true
 #endif
 
 #ifndef GPU_REVERSE_DEPTH
@@ -34,8 +34,6 @@ __declspec(dllimport) int64_t __stdcall GetWindowLongPtrW(HWND hWnd, int nIndex)
 #endif
 
 #define GPU_SWAPCHAIN_IMG_COUNT 3
-// #define GPU_INDEX_ALLOCATOR_ALIVE_SLOT 0xFFFFFFFF
-// #define GPU_INDEX_ALLOCATOR_FREELIST_END (0xFFFFFFFF - 1)
 
 typedef enum GPU_ResourceKind {
 	GPU_ResourceKind_Texture,
@@ -136,6 +134,9 @@ typedef struct GPU_RenderPass {
 	VkFramebuffer framebuffers[GPU_SWAPCHAIN_IMG_COUNT];
 
 	VkSampleCountFlagBits msaa_samples;
+
+	uint32_t width;
+	uint32_t height;
 
 	uint32_t color_targets_count;
 	GPU_TextureView color_targets[8];
@@ -343,7 +344,7 @@ static GPU_String GPU_ParseUntil(GPU_String* remaining, char until_character) {
 
 static bool GPU_ParseInt(GPU_String s, int64_t* out_value) {
 	int64_t value = 0;
-	uint32_t i = 0;
+	int i = 0;
 	for (; i < s.length; i++) {
 		int c = s.data[i];
 		int digit;
@@ -357,7 +358,7 @@ static bool GPU_ParseInt(GPU_String s, int64_t* out_value) {
 
 static void GPU_PrintI(GPU_StrBuilder* builder, int64_t value) {
 	char buffer[100];
-	uint32_t offset = 0;
+	int offset = 0;
 	int64_t remaining = value;
 
 	bool is_negative = remaining < 0;
@@ -648,7 +649,7 @@ GPU_API GPU_PipelineLayout* GPU_InitPipelineLayout() {
 }
 
 static GPU_Binding GPU_AddBinding(GPU_PipelineLayout* layout, const char* name, GPU_ResourceKind kind, GPU_Format image_format) {
-	GPU_Binding binding = (uint32_t)layout->bindings.length;
+	GPU_Binding binding = (uint32_t)layout->bindings.count;
 
 	GPU_BindingInfo binding_info = { kind, image_format, name };
 	DS_ArrPush(&layout->bindings, binding_info);
@@ -680,7 +681,7 @@ GPU_API void GPU_FinalizePipelineLayout(GPU_PipelineLayout* layout) {
 	DS_ArenaMark T = DS_ArenaGetMark(&GPU_STATE.temp_arena);
 
 	DS_DynArray(VkDescriptorSetLayoutBinding) vk_bindings = { &GPU_STATE.temp_arena };
-	DS_ArrResizeUndef(&vk_bindings, layout->bindings.length);
+	DS_ArrResizeUndef(&vk_bindings, layout->bindings.count);
 
 	uint32_t i = 0;
 	DS_ForArrEach(GPU_BindingInfo, &layout->bindings, it) {
@@ -701,12 +702,11 @@ GPU_API void GPU_FinalizePipelineLayout(GPU_PipelineLayout* layout) {
 	}
 
 	VkDescriptorSetLayoutCreateInfo layout_info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
-	layout_info.bindingCount = (uint32_t)vk_bindings.length;
+	layout_info.bindingCount = (uint32_t)vk_bindings.count;
 	layout_info.pBindings = vk_bindings.data;
 	GPU_CheckVK(vkCreateDescriptorSetLayout(GPU_STATE.device, &layout_info, NULL, &layout->descriptor_set_layout));
 
 	// Create pipeline layout
-	// hmm... should we do this per descriptor set layout then?
 	VkPushConstantRange push_constant_range = {0};
 	push_constant_range.stageFlags = VK_SHADER_STAGE_ALL;
 	push_constant_range.size = 128;
@@ -771,7 +771,7 @@ static void GPU_SetBinding(GPU_DescriptorSet* set, uint32_t binding, void* value
 		// GPU_Check(texture->base.format == binding_info.image_format); // Passed format must match the expected format
 	}
 
-	if (binding >= (uint32_t)set->bindings.length) {
+	if (binding >= (uint32_t)set->bindings.count) {
 		GPU_BindingValue empty = {0};
 		DS_ArrResize(&set->bindings, empty, binding + 1);
 	}
@@ -848,12 +848,12 @@ static void GPU_FinalizeDescriptorSetEx(GPU_DescriptorSet* set, bool check_for_c
 		GPU_TODO(); // Allocate a new descriptor pool
 	}
 
-	if (check_for_completeness) GPU_Check(set->bindings.length == set->pipeline_layout->bindings.length); // Did you remember to call GPU_Set[*]Binding on all of the binding slots?
+	if (check_for_completeness) GPU_Check(set->bindings.count == set->pipeline_layout->bindings.count); // Did you remember to call GPU_Set[*]Binding on all of the binding slots?
 
 	DS_DynArray(VkWriteDescriptorSet) writes = { &GPU_STATE.temp_arena };
-	DS_ArrReserve(&writes, set->bindings.length);
+	DS_ArrReserve(&writes, set->bindings.count);
 
-	for (uint32_t i = 0; i < (uint32_t)set->bindings.length; i++) {
+	for (uint32_t i = 0; i < (uint32_t)set->bindings.count; i++) {
 		GPU_BindingInfo binding_info = DS_ArrGet(set->pipeline_layout->bindings, i);
 		GPU_BindingValue binding_value = DS_ArrGet(set->bindings, i);
 		if (check_for_completeness) GPU_Check(binding_value.ptr != NULL); // Did you remember to call GPU_Set[*]Binding on this binding?
@@ -930,8 +930,8 @@ static void GPU_FinalizeDescriptorSetEx(GPU_DescriptorSet* set, bool check_for_c
 		DS_ArrPush(&writes, write);
 	}
 
-	if (writes.length > 0) {
-		vkUpdateDescriptorSets(GPU_STATE.device, (uint32_t)writes.length, writes.data, 0, NULL);
+	if (writes.count > 0) {
+		vkUpdateDescriptorSets(GPU_STATE.device, (uint32_t)writes.count, writes.data, 0, NULL);
 	}
 
 	DS_ArenaSetMark(&GPU_STATE.temp_arena, T);
@@ -969,7 +969,7 @@ GPU_API void GPU_Init(GPU_WindowHandle window) {
 	{ // Create Vulkan Instance
 		const char* extensions[] = {
 			"VK_KHR_surface",
-			"VK_EXT_debug_report",
+			//"VK_EXT_debug_report",
 			"VK_KHR_win32_surface",
 		};
 
@@ -978,22 +978,21 @@ GPU_API void GPU_Init(GPU_WindowHandle window) {
 		app_info.pApplicationName = "MyApplication";
 		app_info.apiVersion = VK_MAKE_VERSION(1, 3, 0); // TODO: make this work for older versions
 
-#if GPU_ENABLE_VALIDATION
+#if GPU_VALIDATION_ENABLED
 		const char* validation_layers[] = { "VK_LAYER_KHRONOS_validation" };
 #endif
-
 		VkInstanceCreateInfo create_info = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
 		create_info.enabledExtensionCount = GPU_ArrayCount(extensions);
 		create_info.ppEnabledExtensionNames = extensions;
 		create_info.pApplicationInfo = &app_info;
-#if GPU_ENABLE_VALIDATION
+#if GPU_VALIDATION_ENABLED
 		create_info.enabledLayerCount = GPU_ArrayCount(validation_layers);
 		create_info.ppEnabledLayerNames = validation_layers;
 #endif
 
 		GPU_CheckVK(vkCreateInstance(&create_info, NULL, &GPU_STATE.instance));
 
-#if GPU_ENABLE_VALIDATION
+#if GPU_VALIDATION_ENABLED
 		// Get the function pointer (required for any extensions)
 		PFN_vkCreateDebugReportCallbackEXT vkCreateDebugReportCallbackEXT = (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(GPU_STATE.instance, "vkCreateDebugReportCallbackEXT");
 		GPU_Check(vkCreateDebugReportCallbackEXT != NULL);
@@ -1642,17 +1641,23 @@ GPU_API GPU_RenderPass* GPU_MakeRenderPass(const GPU_RenderPassDesc* desc) {
 	GPU_CheckVK(vkCreateRenderPass(GPU_STATE.device, &render_pass_info, NULL, &render_pass->vk_handle));
 
 	if (desc->color_targets == GPU_SWAPCHAIN_COLOR_TARGET) {
+		render_pass->width = GPU_STATE.swapchain.width;
+		render_pass->height = GPU_STATE.swapchain.height;
+
 		GPU_RenderPassRebuildSwapchainFramebuffers(render_pass);
 		render_pass->depends_on_swapchain_gen_id = GPU_STATE.swapchain.gen_id;
 		GPU_Check(render_pass->depends_on_swapchain_gen_id > 0);
 	}
 	else {
+		render_pass->width  = desc->width;
+		render_pass->height = desc->height;
+		
 		VkFramebufferCreateInfo framebuffer_info = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
 		framebuffer_info.renderPass = render_pass->vk_handle;
 		framebuffer_info.pAttachments = attachment_img_views;
 		framebuffer_info.attachmentCount = attachments_count;
-		framebuffer_info.width = desc->color_targets[0].texture->width;
-		framebuffer_info.height = desc->color_targets[0].texture->height;
+		framebuffer_info.width = render_pass->width;
+		framebuffer_info.height = render_pass->height;
 		framebuffer_info.layers = 1;
 		GPU_CheckVK(vkCreateFramebuffer(GPU_STATE.device, &framebuffer_info, NULL, &render_pass->framebuffers[0]));
 	}
@@ -1738,7 +1743,7 @@ static GPU_GraphicsPipeline* GPU_MakePipelineEx(const GPU_GraphicsPipelineDesc* 
 		DS_ArrPushN(&pipeline->accesses, fs_desc.accesses, fs_desc.accesses_count);
 	}
 
-	info.stageCount = (uint32_t)stages.length;
+	info.stageCount = (uint32_t)stages.count;
 	info.pStages = stages.data;
 
 	// VERTEX INPUT STATE
@@ -1946,7 +1951,7 @@ static glsl_include_result_t* GPU_IncludeHandlerGLSL(void* ctx, const char* head
 	if (ctx_->includer == NULL) return NULL;
 
 	GPU_String source;
-	GPU_String header_name = { (char*)header_name_cstr, (uint32_t)strlen(header_name_cstr) };
+	GPU_String header_name = { (char*)header_name_cstr, (int)strlen(header_name_cstr) };
 	bool ok = ctx_->includer(ctx_->temp, header_name, &source, ctx_->includer_ctx);
 
 	glsl_include_result_t result = {0};
@@ -1964,7 +1969,7 @@ GPU_API GPU_String GPU_JoinGLSLErrorString(GPU_ARENA* arena, GPU_GLSLErrorArray 
 		GPU_PrintS(&s, errors.data[i].error_message);
 		GPU_PrintL(&s, "\n");
 	}
-	GPU_String result = { s.data, (uint32_t)s.length };
+	GPU_String result = { s.data, s.count };
 	return result;
 }
 
@@ -2101,7 +2106,7 @@ GPU_API GPU_String GPU_SPIRVFromGLSL(GPU_ARENA* arena, GPU_ShaderStage stage, GP
 		glsl_debug_filepath_cstr[desc->glsl_debug_filepath.length] = 0; // null termination
 
 		glslang_program_set_source_file(program, glsl_stage, glsl_debug_filepath_cstr);
-		glslang_program_add_source_text(program, glsl_stage, glsl.data, glsl.length);
+		glslang_program_add_source_text(program, glsl_stage, glsl.data, glsl.count);
 
 		glslang_spv_options_t spv_options = {0};
 		spv_options.generate_debug_info = true;
@@ -2118,11 +2123,11 @@ GPU_API GPU_String GPU_SPIRVFromGLSL(GPU_ARENA* arena, GPU_ShaderStage stage, GP
 		result.length = size_in_dwords * sizeof(uint32_t);
 	}
 	else {
-		GPU_String log = { (char*)log_cstr, (uint32_t)strlen(log_cstr) };
+		GPU_String log = { (char*)log_cstr, (int)strlen(log_cstr) };
 
 		int gen_glsl_line_count = 0, desc_glsl_line_count = 0;
 
-		GPU_String gen_glsl_remaining = { glsl.data, (uint32_t)glsl.length };
+		GPU_String gen_glsl_remaining = { glsl.data, glsl.count };
 		for (; gen_glsl_remaining.length > 0;) {
 			GPU_ParseUntil(&gen_glsl_remaining, '\n');
 			gen_glsl_line_count++;
@@ -2200,7 +2205,7 @@ GPU_API GPU_String GPU_SPIRVFromGLSL(GPU_ARENA* arena, GPU_ShaderStage stage, GP
 
 		if (out_errors == NULL) GPU_Check(false);
 		out_errors->data = errors.data;
-		out_errors->length = (uint32_t)errors.length;
+		out_errors->length = (uint32_t)errors.count;
 	}
 
 	glslang_shader_delete(shader);
@@ -2368,8 +2373,8 @@ static void GPU_InsertBarriers(GPU_Graph* graph, GPU_ResourceAccess* accesses, u
 		}
 	}
 
-	if (mem_barriers.length > 0 || img_barriers.length > 0) {
-		vkCmdPipelineBarrier(graph->cmd_buffer, src_stage_mask, dst_stage_mask, 0, (uint32_t)mem_barriers.length, mem_barriers.data, 0, NULL, (uint32_t)img_barriers.length, img_barriers.data);
+	if (mem_barriers.count > 0 || img_barriers.count > 0) {
+		vkCmdPipelineBarrier(graph->cmd_buffer, src_stage_mask, dst_stage_mask, 0, (uint32_t)mem_barriers.count, mem_barriers.data, 0, NULL, (uint32_t)img_barriers.count, img_barriers.data);
 	}
 }
 
@@ -2590,8 +2595,8 @@ GPU_API void GPU_GraphSubmit(GPU_Graph* graph) {
 			texture->idle_layout_ = dst_layout;
 		}
 
-		if (img_barriers.length > 0) {
-			vkCmdPipelineBarrier(graph->cmd_buffer, src_stage_mask, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, NULL, 0, NULL, (uint32_t)img_barriers.length, img_barriers.data);
+		if (img_barriers.count > 0) {
+			vkCmdPipelineBarrier(graph->cmd_buffer, src_stage_mask, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, NULL, 0, NULL, (uint32_t)img_barriers.count, img_barriers.data);
 		}
 	}
 
@@ -2727,7 +2732,7 @@ GPU_API void GPU_OpBeginRenderPass(GPU_Graph* graph) {
 		GPU_GraphicsPipeline* pipeline = it.ptr->pipeline;
 		GPU_DescriptorSet* desc_set = it.ptr->desc_set;
 
-		for (int access_i = 0; access_i < pipeline->accesses.length; access_i++) {
+		for (int access_i = 0; access_i < pipeline->accesses.count; access_i++) {
 			GPU_Access* binding_access = &pipeline->accesses.data[access_i];
 			GPU_BindingInfo binding_info = DS_ArrGet(pipeline->layout->bindings, binding_access->binding);
 			GPU_BindingValue binding_value = DS_ArrGet(desc_set->bindings, binding_access->binding);
@@ -2766,18 +2771,19 @@ GPU_API void GPU_OpBeginRenderPass(GPU_Graph* graph) {
 			DS_ArrPush(&accesses, access);
 		}
 	}
-	GPU_InsertBarriers(graph, accesses.data, (uint32_t)accesses.length);
+	GPU_InsertBarriers(graph, accesses.data, (uint32_t)accesses.count);
 
 	GPU_Check(graph->frame.img_index != GPU_NOT_A_SWAPCHAIN_GRAPH);
 	uint32_t framebuffer_idx = render_to_swapchain ? graph->frame.img_index : 0;
-	uint32_t width = render_to_swapchain ? GPU_STATE.swapchain.width : render_pass->color_targets[0].texture->width;
-	uint32_t height = render_to_swapchain ? GPU_STATE.swapchain.height : render_pass->color_targets[0].texture->height;
+	
+	uint32_t width = render_pass->width;
+	uint32_t height = render_pass->height;
 
 	VkRenderPassBeginInfo render_info = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
 	render_info.renderPass = render_pass->vk_handle;
 	render_info.framebuffer = render_pass->framebuffers[framebuffer_idx];
-	render_info.renderArea.extent.width = width;
-	render_info.renderArea.extent.height = height;
+	render_info.renderArea.extent.width = render_pass->width;
+	render_info.renderArea.extent.height = render_pass->height;
 
 	vkCmdBeginRenderPass(graph->cmd_buffer, &render_info, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -2835,7 +2841,7 @@ GPU_API void GPU_OpDispatch(GPU_Graph* graph, uint32_t group_count_x, uint32_t g
 		GPU_ResourceAccess access = { binding_value.ptr, binding_info.kind, access_flags, first_layer, layer_count, first_mip_level, mip_level_count };
 		DS_ArrPush(&accesses, access);
 	}
-	GPU_InsertBarriers(graph, accesses.data, (uint32_t)accesses.length);
+	GPU_InsertBarriers(graph, accesses.data, (uint32_t)accesses.count);
 
 	vkCmdDispatch(graph->cmd_buffer, group_count_x, group_count_y, group_count_z);
 }
@@ -3034,7 +3040,7 @@ GPU_API void GPU_OpPrepareRenderPass(GPU_Graph* graph, GPU_RenderPass* render_pa
 GPU_API uint32_t GPU_OpPrepareDrawParams(GPU_Graph* graph, GPU_GraphicsPipeline* pipeline, GPU_DescriptorSet* descriptor_set) {
 	GPU_Check(graph->builder_state.preparing_render_pass != NULL);
 
-	uint32_t idx = (uint32_t)graph->builder_state.prepared_draw_params.length;
+	uint32_t idx = (uint32_t)graph->builder_state.prepared_draw_params.count;
 	GPU_DrawParams draw_params = { pipeline, descriptor_set };
 	DS_ArrPush(&graph->builder_state.prepared_draw_params, draw_params);
 	return idx;

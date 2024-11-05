@@ -14,8 +14,8 @@ typedef struct GPU_DescriptorArena GPU_DescriptorArena;
 typedef struct GPU_Graph GPU_Graph;
 
 typedef struct GPU_String {
-	char* data;
-	uint32_t length;
+	const char* data;
+	int length;
 } GPU_String;
 
 #ifdef __cplusplus
@@ -208,17 +208,12 @@ typedef struct GPU_Buffer {
 	void* data; // only valid when GPU_BufferFlag_CPUAccess is set
 } GPU_Buffer;
 
-// typedef struct GPU_Define {
-// 	GPU_String name;
-// 	GPU_String value;
-// } GPU_Define;
-
 typedef struct GPU_TextureView {
 	GPU_Texture* texture;
 	uint32_t mip_level;
 } GPU_TextureView;
 
-#define GPU_SWAPCHAIN_COLOR_TARGET ((GPU_TextureView*)0)
+#define GPU_SWAPCHAIN_COLOR_TARGET ((GPU_TextureView*)-1)
 
 typedef struct GPU_RenderPassDesc {
 	// To enable multisampling in your renderpass, set `msaa_color_resolve_targets` to an array of resolve targets per each color target.
@@ -227,6 +222,7 @@ typedef struct GPU_RenderPassDesc {
 	uint32_t color_targets_count;
 	GPU_TextureView* color_targets; // may be GPU_SWAPCHAIN_COLOR_TARGET, in which case `color_targets_count` must be 1
 	GPU_TextureView* msaa_color_resolve_targets; // NULL means MSAA is disabled
+	uint32_t width, height; // leave these to zero when using GPU_SWAPCHAIN_COLOR_TARGET
 
 	GPU_Texture* depth_stencil_target; // NULL means no depth stencil attachment
 } GPU_RenderPassDesc;
@@ -395,6 +391,7 @@ GPU_API void GPU_DestroyDescriptorArena(GPU_DescriptorArena* descriptor_arena); 
 // On GPU_Lifetime, we could add a flag to say "GPU_LifetimeFlag_MakeDescriptorPool"
 // * `descriptor_arena` may be NULL
 GPU_API GPU_DescriptorSet* GPU_InitDescriptorSet(GPU_DescriptorArena* descriptor_arena, GPU_PipelineLayout* pipeline_layout);
+GPU_API void GPU_DestroyDescriptorSet(GPU_DescriptorSet* set);
 
 GPU_API void GPU_SetTextureBinding(GPU_DescriptorSet* set, GPU_Binding binding, GPU_Texture* value);
 

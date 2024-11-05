@@ -7,6 +7,8 @@
 
 #include "src/gpu/gpu.h"
 
+#define GPU_VALIDATION_ENABLED false
+
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_win32.h>
 #include <glslang/Include/glslang_c_interface.h>
