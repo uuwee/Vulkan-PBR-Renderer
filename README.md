@@ -1,6 +1,8 @@
 # Vulkan PBR Renderer
 
-Physically based renderer demo written using Vulkan.
+Physically based Vulkan renderer demo with dynamic global illumination.
+
+[Read more about this project in my article](https://eeromutka.github.io/projects/vulkan_renderer.html)
 
 ## Building
 
@@ -10,12 +12,9 @@ Prerequesites:
 
 To generate Visual Studio project files, run the `gen_projects.bat` script. You can then open the generated `build/demos.sln` file in Visual Studio.
 
-## Screenshots & videos
+## Screenshots
 
 ![suntemple](/screenshots/SunTemple.jpg)
-![bistro](/screenshots/bistro.jpg)
+![bistro](/screenshots/Bistro.jpg)
 ![spheres](/screenshots/pbr_spheres.jpg)
 ![weapon](/screenshots/cerberus.jpg)
-
-[![video](https://img.youtube.com/vi/DZkTVobNMT4/0.jpg)](https://www.youtube.com/watch?v=DZkTVobNMT4)
-
