@@ -314,24 +314,6 @@ static bool ReloadMesh(Mesh* result, DS_Arena* temp_arena, const char* filepath,
 	return true;
 }
 
-static void UpdateHotreloader(Hotreloader* hotreloader) {
-	AssetIndex check_idx = hotreloader->next_check_asset_idx;
-	hotreloader->next_check_asset_idx = (hotreloader->next_check_asset_idx + 1) % DS_ArrayCount(ASSET_PATHS);
-
-	uint64_t modtime;
-	bool ok = OS_FileLastModificationTime(ASSET_PATHS[check_idx], &modtime);
-	assert(ok);
-
-	if (hotreloader->file_modtimes[check_idx] == 0) { // Initialize modtime for this file
-		hotreloader->file_modtimes[check_idx] = modtime;
-	}
-	
-	if (modtime != hotreloader->file_modtimes[check_idx]) {
-		hotreloader->is_outdated[check_idx] = true;
-		hotreloader->file_modtimes[check_idx] = modtime;
-	}
-}
-
 static GPU_Texture* RefreshTexture(Hotreloader* r, Scene* s, AssetIndex asset, bool* reloaded) {
 	if (r->is_outdated[asset]) {
 		int x, y, comp;
@@ -401,7 +383,23 @@ static void LoadVertexAndFragmentShader(DS_Arena* arena, AssetIndex asset, GPU_P
 	}	
 }
 
-static void UpdateScene(DS_Arena* temp_arena, Hotreloader* r, Scene* s) {
+static void HotreloadShaders(Renderer* renderer) {
+	AssetIndex check_idx = hotreloader->next_check_asset_idx;
+	hotreloader->next_check_asset_idx = (hotreloader->next_check_asset_idx + 1) % DS_ArrayCount(ASSET_PATHS);
+
+	uint64_t modtime;
+	bool ok = OS_FileLastModificationTime(ASSET_PATHS[check_idx], &modtime);
+	assert(ok);
+
+	if (hotreloader->file_modtimes[check_idx] == 0) { // Initialize modtime for this file
+		hotreloader->file_modtimes[check_idx] = modtime;
+	}
+	
+	if (modtime != hotreloader->file_modtimes[check_idx]) {
+		hotreloader->is_outdated[check_idx] = true;
+		hotreloader->file_modtimes[check_idx] = modtime;
+	}
+	
 	bool update_desc_set = false;
 	GPU_Texture* tex_base_color = RefreshTexture(r, s, ASSETS.TEX_BASE_COLOR, &update_desc_set);
 	GPU_Texture* tex_x_rough_metal = RefreshTexture(r, s, ASSETS.TEX_AO_ROUGHNESS_METALLIC, &update_desc_set);

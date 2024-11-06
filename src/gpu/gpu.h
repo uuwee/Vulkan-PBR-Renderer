@@ -1,6 +1,10 @@
 #ifndef GPU_INCLUDED
 #define GPU_INCLUDED
 
+#ifndef FIRE_DS_INCLUDED
+#error "fire_ds.h" must be included before this file!
+#endif
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -15,7 +19,7 @@ typedef struct GPU_Graph GPU_Graph;
 
 typedef struct GPU_String {
 	const char* data;
-	int length;
+	size_t length;
 } GPU_String;
 
 #ifdef __cplusplus
@@ -25,12 +29,6 @@ typedef struct GPU_String {
 #endif
 
 #define GPU_STR(x) GPU_LangAgnosticLiteral(GPU_String){x, sizeof(x)-1}
-
-// TODO: custom arena support?
-#define GPU_ARENA DS_Arena
-#define GPU_ARENA_ALLOCATE(ARENA, SIZE) (char*)DS_ArenaPush(ARENA, SIZE)
-
-#define GPU_ArrayCount(ARRAY) sizeof(ARRAY) / sizeof(ARRAY[0])
 
 typedef struct GPU_FormatInfo {
 	uint32_t block_extent;  // normally 1, but for example BC1_RGB has this 4
@@ -238,7 +236,7 @@ typedef struct GPU_Access {
 	uint32_t binding;
 } GPU_Access;
 
-typedef bool (*GPU_ShaderIncluderFn)(GPU_ARENA* arena, GPU_String filepath, GPU_String* out_source, void* ctx);
+typedef bool (*GPU_ShaderIncluderFn)(DS_Arena* arena, GPU_String filepath, GPU_String* out_source, void* ctx);
 
 typedef struct GPU_ShaderDesc {
 	GPU_Access* accesses;
@@ -351,7 +349,11 @@ typedef uint32_t GPU_Binding;
 // -- API ------------------------------------------------
 
 #ifndef GPU_API
-#define GPU_API static
+#ifdef __cplusplus
+#define GPU_API extern "C"
+#else
+#define GPU_API
+#endif
 #endif
 
 // NOTE: currently, glslang_initialize_process
@@ -433,8 +435,8 @@ GPU_API void GPU_DestroyBuffer(GPU_Buffer* buffer);
 // If NULL is passed to `out_errors`, the function will assert that the shader compilation succeeds.
 // Returns an empty string if failed.
 // * `out_errors` may be NULL
-GPU_API GPU_String GPU_SPIRVFromGLSL(GPU_ARENA* arena, GPU_ShaderStage stage, GPU_PipelineLayout* pipeline_layout, const GPU_ShaderDesc* desc, GPU_GLSLErrorArray* out_errors);
-GPU_API GPU_String GPU_JoinGLSLErrorString(GPU_ARENA* arena, GPU_GLSLErrorArray errors);
+GPU_API GPU_String GPU_SPIRVFromGLSL(DS_Arena* arena, GPU_ShaderStage stage, GPU_PipelineLayout* pipeline_layout, const GPU_ShaderDesc* desc, GPU_GLSLErrorArray* out_errors);
+GPU_API GPU_String GPU_JoinGLSLErrorString(DS_Arena* arena, GPU_GLSLErrorArray errors);
 
 // Renderpass and Pipeline are separated, so that you can have a single renderpass with MSAA resolve at the end, and have multiple draw commands with different pipelines inside.
 GPU_API GPU_RenderPass* GPU_MakeRenderPass(const GPU_RenderPassDesc* desc);

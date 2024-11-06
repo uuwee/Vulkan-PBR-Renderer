@@ -11,7 +11,7 @@
 #define FIRE_OS_WINDOW_INCLUDED
 
 #ifndef OS_WINDOW_API
-#define OS_WINDOW_API static
+#define OS_WINDOW_API
 #endif
 
 #include <stdint.h>

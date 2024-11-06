@@ -1,16 +1,5 @@
-// camera.h - Eero Mutka, 2023
-// 
-// * Depends on `fire.h` and `HandmadeMath.h`
-// * Assumes a right-handed coordinate system.
-// 
-// USAGE:
-// 1. Include this file
-// 2. Make a zero-initialized Camera
-// 3. on update, call `Camera_Update()`
-// 4. take the cached `world_to_projection` matrix from the camera
-//
 
-typedef struct Camera {
+struct Camera {
 	HMM_Vec3 pos;
 	HMM_Quat ori;
 
@@ -26,7 +15,7 @@ typedef struct Camera {
 	HMM_Mat4 view_from_clip;
 	HMM_Mat4 world_from_view;
 	HMM_Mat4 world_from_clip;
-} Camera;
+};
 
 static HMM_Vec3 Camera_Right(const Camera* camera) { return camera->world_from_view.Columns[0].XYZ; }
 
@@ -37,17 +26,17 @@ static HMM_Vec3 Camera_Down(const Camera* camera)      { return camera->world_fr
 static HMM_Vec3 Camera_Forward(const Camera* camera)   { return camera->world_from_view.Columns[2].XYZ; }
 #else
 static HMM_Vec3 Camera_Up(const Camera* camera)        { return camera->world_from_view.Columns[1].XYZ; }
-static HMM_Vec3 Camera_Down(const Camera* camera)      { return HMM_MulV3F(camera->world_from_view.Columns[1].XYZ, -1.f); }
-static HMM_Vec3 Camera_Forward(const Camera* camera)   { return HMM_MulV3F(camera->world_from_view.Columns[2].XYZ, -1.f); }
+static HMM_Vec3 Camera_Down(const Camera* camera)      { return camera->world_from_view.Columns[1].XYZ * -1.f; }
+static HMM_Vec3 Camera_Forward(const Camera* camera)   { return camera->world_from_view.Columns[2].XYZ * -1.f; }
 #endif
 
 static HMM_Vec3 Camera_RotateV3(HMM_Quat q, HMM_Vec3 v) {
 	// from https://stackoverflow.com/questions/44705398/about-glm-quaternion-rotation
-	HMM_Vec3 a = HMM_MulV3F(v, q.W);
+	HMM_Vec3 a = v * q.W;
 	HMM_Vec3 b = HMM_Cross(q.XYZ, v);
-	HMM_Vec3 c = HMM_AddV3(b, a);
+	HMM_Vec3 c = b + a;
 	HMM_Vec3 d = HMM_Cross(q.XYZ, c);
-	return HMM_AddV3(v, HMM_MulV3F(d, 2.f));
+	return v + d * 2.f;
 }
 
 static void Camera_Update(Camera* camera, Input_Frame* inputs, float movement_speed, float mouse_speed,
@@ -92,37 +81,29 @@ static void Camera_Update(Camera* camera, Input_Frame* inputs, float movement_sp
 			movement_speed *= 0.1f;
 		}
 		if (Input_IsDown(inputs, Input_Key_W)) {
-			camera->pos = HMM_AddV3(camera->pos,
-				HMM_MulV3F(Camera_Forward(camera), movement_speed));
+			camera->pos = camera->pos + Camera_Forward(camera) * movement_speed;
 		}
 		if (Input_IsDown(inputs, Input_Key_S)) {
-			camera->pos = HMM_AddV3(camera->pos,
-				HMM_MulV3F(Camera_Forward(camera), -movement_speed));
+			camera->pos = camera->pos + Camera_Forward(camera) * -movement_speed;
 		}
 		if (Input_IsDown(inputs, Input_Key_D)) {
-			camera->pos = HMM_AddV3(camera->pos,
-				HMM_MulV3F(Camera_Right(camera), movement_speed));
+			camera->pos = camera->pos + Camera_Right(camera) * movement_speed;
 		}
 		if (Input_IsDown(inputs, Input_Key_A)) {
-			camera->pos = HMM_AddV3(camera->pos,
-				HMM_MulV3F(Camera_Right(camera), -movement_speed));
+			camera->pos = camera->pos + Camera_Right(camera) * -movement_speed;
 		}
 		if (Input_IsDown(inputs, Input_Key_E)) {
-			camera->pos = HMM_AddV3(camera->pos,
-				HMM_V3(0, 0, movement_speed));
+			camera->pos = camera->pos + HMM_V3(0, 0, movement_speed);
 		}
 		if (Input_IsDown(inputs, Input_Key_Q)) {
-			camera->pos = HMM_AddV3(camera->pos,
-				HMM_V3(0, 0, -movement_speed));
+			camera->pos = camera->pos + HMM_V3(0, 0, -movement_speed);
 		}
 	}
 
 	// Smoothly interpolate lazy position and ori
 	camera->lazy_pos = HMM_LerpV3(camera->lazy_pos, 0.2f, camera->pos);
 	camera->lazy_ori = HMM_SLerp(camera->lazy_ori, 0.2f, camera->ori);
-	//camera->lazy_pos = HMM_LerpV3(camera->lazy_pos, 1.f, camera->pos);
-	//camera->lazy_ori = HMM_SLerp(camera->lazy_ori, 1.f, camera->ori);
-
+	
 	camera->aspect_ratio = aspect_ratio_x_over_y;
 	camera->z_near = z_near;
 	camera->z_far = z_far;
@@ -145,5 +126,5 @@ static void Camera_Update(Camera* camera, Input_Frame* inputs, float movement_sp
 	camera->view_from_clip = HMM_InvGeneralM4(camera->clip_from_view);
 	
 	camera->clip_from_world = HMM_MulM4(camera->clip_from_view, camera->view_from_world);
-	camera->world_from_clip = HMM_InvGeneralM4(camera->clip_from_world);//camera->view_to_world * camera->clip_to_view;
+	camera->world_from_clip = HMM_InvGeneralM4(camera->clip_from_world); //camera->view_to_world * camera->clip_to_view;
 }
