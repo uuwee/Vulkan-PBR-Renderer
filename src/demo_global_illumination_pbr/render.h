@@ -3,25 +3,19 @@
 
 #define BLOOM_PASS_COUNT 6
 
-// Hmm... maybe the mesh shouldn't be hardcoded... TODO!
-// #define MESH_WORLD_PATH  "../resources/SunTemple/SunTemple.fbx"
-// #define MESH_WORLD_PATH  "(path to bistro)/Bistro_v5_2/BistroExterior.fbx"
-// ShaderAsset_TEX_ENV_CUBE "C:/EeroSampleAssets/HDRIs/shipyard_cranes_track_cube.hdr"
-// ShaderAsset_Mesh_Skybox, "C:/EeroSampleAssets/basic/Skybox_200x200x200.fbx")\
-
 #define SHADER_ASSETS \
-	X(ShaderAsset_LightgridVoxelize,       "../src/demo_global_illumination_pbr/lightgrid_voxelize.glsl")\
-	X(ShaderAsset_LightgridSweep,          "../src/demo_global_illumination_pbr/lightgrid_sweep.glsl")\
-	X(ShaderAsset_GeometryPass,            "../src/demo_global_illumination_pbr/geometry_pass.glsl")\
-	X(ShaderAsset_LightingPass,            "../src/demo_global_illumination_pbr/lighting_pass.glsl")\
-	X(ShaderAsset_TAAResolve,              "../src/demo_global_illumination_pbr/taa_resolve.glsl")\
-	X(ShaderAsset_BloomDownsample,         "../src/demo_global_illumination_pbr/bloom_downsample.glsl")\
-	X(ShaderAsset_BloomUpsample,           "../src/demo_global_illumination_pbr/bloom_upsample.glsl")\
-	X(ShaderAsset_FinalPostProcess,        "../src/demo_global_illumination_pbr/final_post_process.glsl")\
-	X(ShaderAsset_SunDepthPass,            "../src/demo_global_illumination_pbr/sun_depth_pass.glsl")\
-	X(ShaderAsset_GenIrradianceMap,        "../src/demo_global_illumination_pbr/gen_irradiance_map.glsl")\
-	X(ShaderAsset_GenPrefilteredEnvMap,    "../src/demo_global_illumination_pbr/gen_prefiltered_env_map.glsl")\
-	X(ShaderAsset_GenBRDFIntegrationMap,   "../src/demo_global_illumination_pbr/gen_brdf_integration_map.glsl")
+	X(ShaderAsset_LightgridVoxelize,       "../src/demo_global_illumination_pbr/shaders/lightgrid_voxelize.glsl")\
+	X(ShaderAsset_LightgridSweep,          "../src/demo_global_illumination_pbr/shaders/lightgrid_sweep.glsl")\
+	X(ShaderAsset_GeometryPass,            "../src/demo_global_illumination_pbr/shaders/geometry_pass.glsl")\
+	X(ShaderAsset_LightingPass,            "../src/demo_global_illumination_pbr/shaders/lighting_pass.glsl")\
+	X(ShaderAsset_TAAResolve,              "../src/demo_global_illumination_pbr/shaders/taa_resolve.glsl")\
+	X(ShaderAsset_BloomDownsample,         "../src/demo_global_illumination_pbr/shaders/bloom_downsample.glsl")\
+	X(ShaderAsset_BloomUpsample,           "../src/demo_global_illumination_pbr/shaders/bloom_upsample.glsl")\
+	X(ShaderAsset_FinalPostProcess,        "../src/demo_global_illumination_pbr/shaders/final_post_process.glsl")\
+	X(ShaderAsset_SunDepthPass,            "../src/demo_global_illumination_pbr/shaders/sun_depth_pass.glsl")\
+	X(ShaderAsset_GenIrradianceMap,        "../src/demo_global_illumination_pbr/shaders/gen_irradiance_map.glsl")\
+	X(ShaderAsset_GenPrefilteredEnvMap,    "../src/demo_global_illumination_pbr/shaders/gen_prefiltered_env_map.glsl")\
+	X(ShaderAsset_GenBRDFIntegrationMap,   "../src/demo_global_illumination_pbr/shaders/gen_brdf_integration_map.glsl")
 
 enum ShaderAsset {
 #define X(TAG, PATH) TAG,
@@ -169,6 +163,7 @@ struct Renderer {
 	ShaderHotreloader shader_hotreloader;
 
 	uint32_t window_width, window_height;
+	GPU_Texture* tex_env_cube;
 
 	GPU_RenderPass* lightgrid_voxelize_render_pass;
 	GPU_RenderPass* geometry_render_pass[2];
@@ -183,13 +178,6 @@ struct Renderer {
 	MainPassLayout main_pass_layout;
 	LightingPassLayout lighting_pass_layout;
 	
-	// Let's have one giant vertex buffer and index buffer for the entire scene.
-	// - One descriptor set per material so when importing a mesh, I should batch everything of the same material into one vertex buffer.
-	// This gives us 48 draw calls for an imported bistro
-	RenderObject ro_world;
-	
-	RenderObject ro_skybox;
-
 	GPU_Texture* sun_depth_rt;
 	GPU_Texture* lightgrid;
 
@@ -213,7 +201,6 @@ struct Renderer {
 	GPU_Texture* dummy_normal_map;
 	GPU_Texture* dummy_black;
 	GPU_Texture* dummy_white;
-	GPU_Texture* tex_env_cube;
 	GPU_Texture* irradiance_map;
 	GPU_Texture* brdf_lut;
 	GPU_Texture* tex_specular_env_map;
@@ -243,8 +230,8 @@ struct Renderer {
 
 // -------------------------------------------------------------
 
-void InitRenderer(Renderer* renderer, uint32_t window_width, uint32_t window_height);
+void InitRenderer(Renderer* renderer, uint32_t window_width, uint32_t window_height, GPU_Texture* tex_env_cube);
 
 void HotreloadShaders(Renderer* renderer);
 
-void BuildRenderCommands(Renderer* renderer, GPU_Graph* graph, GPU_Texture* backbuffer, const Camera& camera, HMM_Vec2 sun_angle);
+void BuildRenderCommands(Renderer* renderer, GPU_Graph* graph, GPU_Texture* backbuffer, RenderObject* ro_world, RenderObject* ro_skybox, GPU_Texture* tex_env_cube, const Camera& camera, HMM_Vec2 sun_angle);

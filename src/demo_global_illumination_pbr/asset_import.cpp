@@ -1,4 +1,13 @@
-#if 0
+#include "common.h"
+#include "render.h"
+#include "os_utils.h"
+#include "asset_import.h"
+
+#define STB_IMAGE_STATIC
+#define STB_IMAGE_IMPLEMENTATION
+#include "third_party/stb_image.h"
+
+#include "third_party/ddspp.h"
 
 #define ASSIMP_DLL
 #define ASSIMP_API 
@@ -6,17 +15,34 @@
 #include <assimp/postprocess.h>
 #include <assimp/cimport.h>
 
+extern DS_Arena* TEMP; // Arena for per-frame, temporary allocations
+
+static const HMM_Vec3 world_import_offset = {0, 25.f, 0}; // TODO: fix
+
+GPU_Texture* MakeTextureFromHDRIFile(STR_View filepath) {
+	int x, y, comp;
+	void* data = stbi_loadf(STR_ToC(TEMP, filepath), &x, &y, &comp, 4);
+	assert(data);
+	assert(y == x*6);
+
+	GPU_Texture* result = GPU_MakeTexture(GPU_Format_RGBA32F, (uint32_t)x, (uint32_t)x, 1, GPU_TextureFlag_Cubemap|GPU_TextureFlag_HasMipmaps, data);
+
+	stbi_image_free(data);
+	return result;
+}
+
 // may return NULL
-static GPU_Texture* LoadMeshTexture(STR_View base_directory, struct aiMaterial* mat, enum aiTextureType type) {
+static GPU_Texture* LoadMeshTexture(STR_View base_directory, aiMaterial* mat, enum aiTextureType type) {
 	if (aiGetMaterialTextureCount(mat, type) != 0) {
-		struct aiString path;
+		aiString path;
 		uint32_t flags;
 		if (aiGetMaterialTexture(mat, type, 0, &path, NULL, NULL, NULL, NULL, NULL, &flags) == AI_SUCCESS) {
 			DS_ArenaMark dds_file_mark = DS_ArenaGetMark(TEMP);
 			STR_View texture_path = STR_Form(TEMP, "%v/%s", base_directory, path.data);
 
 			STR_View tex_file_data;
-			if (!OS_ReadEntireFile(TEMP, texture_path, &tex_file_data)) TODO();
+			bool ok = OS_ReadEntireFile(TEMP, texture_path, &tex_file_data);
+			assert(ok);
 
 			DDSPP_Descriptor desc = {};
 			DDSPP_Result result = ddspp_decode_header((uint8_t*)tex_file_data.data, &desc);
@@ -27,40 +53,37 @@ static GPU_Texture* LoadMeshTexture(STR_View base_directory, struct aiMaterial* 
 			else if (desc.format == BC3_UNORM)      format = GPU_Format_BC3_RGBA_UN;
 			else if (desc.format == R8G8B8A8_UNORM) format = GPU_Format_RGBA8UN;
 			else if (desc.format == BC5_UNORM)      format = GPU_Format_BC5_UN;
-			else TODO();
+			else assert(0);
 
 			GPU_Texture* texture = GPU_MakeTexture(format, desc.width, desc.height, 1, 0, tex_data);
 			DS_ArenaSetMark(TEMP, dds_file_mark);
 
-			//RL_FREE(tex_data);
 			return texture;
 		}
 	}
 	return NULL;
 }
 
-static bool ReloadMesh(DS_Arena* arena, Scene* s, RenderObject* render_object, STR_View filepath) {
-	// free existing data
-	{
-		GPU_DestroyBuffer(render_object->vertex_buffer);
-		GPU_DestroyBuffer(render_object->index_buffer);
-		
-		for (int i = 0; i < render_object->parts.count; i++) {
-			RenderObjectPart* part = &render_object->parts[i];
-			GPU_DestroyDescriptorSet(part->descriptor_set);
-			GPU_DestroyTexture(part->tex_base_color);
-			GPU_DestroyTexture(part->tex_normal);
-			GPU_DestroyTexture(part->tex_orm);
-			GPU_DestroyTexture(part->tex_emissive);
-		}
-
-		*render_object = {};
-	}
-
-	// init render object
-	DS_ArrInit(&render_object->parts, arena);
+void UnloadMesh(RenderObject* mesh) {
+	GPU_DestroyBuffer(mesh->vertex_buffer);
+	GPU_DestroyBuffer(mesh->index_buffer);
 	
-	DS_ArenaMark T = DS_ArenaGetMark(TEMP);
+	for (int i = 0; i < mesh->parts.count; i++) {
+		RenderObjectPart* part = &mesh->parts[i];
+		GPU_DestroyDescriptorSet(part->descriptor_set);
+		GPU_DestroyTexture(part->tex_base_color);
+		GPU_DestroyTexture(part->tex_normal);
+		GPU_DestroyTexture(part->tex_orm);
+		GPU_DestroyTexture(part->tex_emissive);
+	}
+	
+	DS_ArrDeinit(&mesh->parts);
+	*mesh = {};
+}
+
+RenderObject LoadMesh(Renderer* renderer, STR_View filepath) {
+	RenderObject render_object = {};
+	DS_ArrInit(&render_object.parts, DS_HEAP);
 	
 	assert(!STR_ContainsU(filepath, '\\')); // we should use / for path separators
 	STR_View base_directory = STR_BeforeLast(filepath, '/');
@@ -68,7 +91,7 @@ static bool ReloadMesh(DS_Arena* arena, Scene* s, RenderObject* render_object, S
 	char* filepath_cstr = STR_ToC(TEMP, filepath);
 	
 	// aiProcess_GlobalScale uses the scale settings from the file. It looks like the blender exporter uses it too.
-	const struct aiScene* scene = aiImportFile(filepath_cstr, aiProcess_Triangulate|aiProcess_PreTransformVertices|aiProcess_GlobalScale|aiProcess_CalcTangentSpace);
+	const aiScene* scene = aiImportFile(filepath_cstr, aiProcess_Triangulate|aiProcess_PreTransformVertices|aiProcess_GlobalScale|aiProcess_CalcTangentSpace);
 	assert(scene != NULL);
 
 	typedef struct {
@@ -93,8 +116,8 @@ static bool ReloadMesh(DS_Arena* arena, Scene* s, RenderObject* render_object, S
 		uint32_t first_new_vertex = (uint32_t)mat_mesh->vertices.count;
 
 		for (uint32_t i = 0; i < mesh->mNumVertices; i++) {
-			if (mesh->mNormals == NULL) TODO();
-			if (mesh->mTextureCoords[0] == NULL) TODO();
+			assert(mesh->mNormals != NULL);
+			assert(mesh->mTextureCoords[0] != NULL);
 			aiVector3D pos = mesh->mVertices[i];
 			aiVector3D normal = mesh->mNormals[i];
 			aiVector3D tangent = mesh->mTangents[i];
@@ -111,7 +134,7 @@ static bool ReloadMesh(DS_Arena* arena, Scene* s, RenderObject* render_object, S
 
 		for (uint32_t i = 0; i < mesh->mNumFaces; i++) {
 			aiFace face = mesh->mFaces[i];
-			if (face.mNumIndices != 3) TODO();
+			assert(face.mNumIndices == 3);
 
 			DS_ArrPush(&mat_mesh->indices, first_new_vertex + face.mIndices[0]);
 			DS_ArrPush(&mat_mesh->indices, first_new_vertex + face.mIndices[1]);
@@ -144,19 +167,19 @@ static bool ReloadMesh(DS_Arena* arena, Scene* s, RenderObject* render_object, S
 			}
 			first_vertex += (uint32_t)mat_mesh->vertices.count;
 			
-			DS_ArrPush(&render_object->parts, part);
+			DS_ArrPush(&render_object.parts, part);
 		}
 
 		assert(first_vertex == total_vertex_count);
 		assert(first_index == total_index_count);
 	}
 
-	render_object->vertex_buffer = GPU_MakeBuffer(total_vertex_count * sizeof(Vertex), GPU_BufferFlag_GPU | GPU_BufferFlag_StorageBuffer, merged_vertices);
-	render_object->index_buffer = GPU_MakeBuffer(total_index_count * sizeof(uint32_t), GPU_BufferFlag_GPU | GPU_BufferFlag_StorageBuffer, merged_indices);
+	render_object.vertex_buffer = GPU_MakeBuffer(total_vertex_count * sizeof(Vertex), GPU_BufferFlag_GPU | GPU_BufferFlag_StorageBuffer, merged_vertices);
+	render_object.index_buffer = GPU_MakeBuffer(total_index_count * sizeof(uint32_t), GPU_BufferFlag_GPU | GPU_BufferFlag_StorageBuffer, merged_indices);
 	
 	for (int i = 0; i < mat_meshes.count; i++) {
 		MatMesh* mat_mesh = &mat_meshes[i];
-		RenderObjectPart* part = &render_object->parts[i];
+		RenderObjectPart* part = &render_object.parts[i];
 
 		aiMaterial* mat = scene->mMaterials[i];
 		part->tex_base_color = LoadMeshTexture(base_directory, mat, aiTextureType_DIFFUSE);
@@ -164,44 +187,39 @@ static bool ReloadMesh(DS_Arena* arena, Scene* s, RenderObject* render_object, S
 		part->tex_orm        = LoadMeshTexture(base_directory, mat, aiTextureType_SPECULAR);
 		part->tex_emissive   = LoadMeshTexture(base_directory, mat, aiTextureType_EMISSIVE);
 
-		MainPassLayout* pass = &s->main_pass_layout;
+		MainPassLayout* pass = &renderer->main_pass_layout;
 
 		GPU_DescriptorSet* desc_set = GPU_InitDescriptorSet(NULL, pass->pipeline_layout);
 
-		GPU_SetBufferBinding(desc_set, pass->globals_binding, s->globals_buffer);
+		GPU_SetBufferBinding(desc_set, pass->globals_binding, renderer->globals_buffer);
 		GPU_SetSamplerBinding(desc_set, pass->sampler_linear_clamp_binding, GPU_SamplerLinearClamp());
 		GPU_SetSamplerBinding(desc_set, pass->sampler_linear_wrap_binding, GPU_SamplerLinearWrap());
-		GPU_SetSamplerBinding(desc_set, pass->sampler_percentage_closer, s->sampler_percentage_closer);
+		GPU_SetSamplerBinding(desc_set, pass->sampler_percentage_closer, renderer->sampler_percentage_closer);
 
-		GPU_SetTextureBinding(desc_set, pass->tex0_binding, part->tex_base_color ? part->tex_base_color : s->dummy_white);
-		GPU_SetTextureBinding(desc_set, pass->tex1_binding, part->tex_normal ? part->tex_normal : s->dummy_normal_map);
-		GPU_SetTextureBinding(desc_set, pass->tex2_binding, part->tex_orm ? part->tex_orm : s->dummy_black);
-		GPU_SetTextureBinding(desc_set, pass->tex3_binding, part->tex_emissive ? part->tex_emissive : s->dummy_black);
-		GPU_SetTextureBinding(desc_set, pass->sun_depth_map_binding_, s->sun_depth_rt);
+		GPU_SetTextureBinding(desc_set, pass->tex0_binding, part->tex_base_color ? part->tex_base_color : renderer->dummy_white);
+		GPU_SetTextureBinding(desc_set, pass->tex1_binding, part->tex_normal ? part->tex_normal : renderer->dummy_normal_map);
+		GPU_SetTextureBinding(desc_set, pass->tex2_binding, part->tex_orm ? part->tex_orm : renderer->dummy_black);
+		GPU_SetTextureBinding(desc_set, pass->tex3_binding, part->tex_emissive ? part->tex_emissive : renderer->dummy_black);
+		GPU_SetTextureBinding(desc_set, pass->sun_depth_map_binding_, renderer->sun_depth_rt);
 
 		// for lightgrid voxelization
-		GPU_SetBufferBinding(desc_set, pass->ssbo0_binding, render_object->vertex_buffer);
-		GPU_SetBufferBinding(desc_set, pass->ssbo1_binding, render_object->index_buffer);
-		GPU_SetStorageImageBinding(desc_set, pass->img0_binding, s->lightgrid, 0);
-		//GPU_SetStorageImageBinding(desc_set, pass->img0_binding_uint, s->lightgrid, 0);
+		GPU_SetBufferBinding(desc_set, pass->ssbo0_binding, render_object.vertex_buffer);
+		GPU_SetBufferBinding(desc_set, pass->ssbo1_binding, render_object.index_buffer);
+		GPU_SetStorageImageBinding(desc_set, pass->img0_binding, renderer->lightgrid, 0);
+		//GPU_SetStorageImageBinding(desc_set, pass->img0_binding_uint, renderer->lightgrid, 0);
 
 		// ... unused descriptors. This is stupid.
-		GPU_SetTextureBinding(desc_set, pass->prev_frame_result_binding, s->dummy_black);
-		GPU_SetTextureBinding(desc_set, pass->gbuffer_depth_binding, s->dummy_black);
-		GPU_SetTextureBinding(desc_set, pass->gbuffer_depth_prev_binding, s->dummy_black);
-		GPU_SetTextureBinding(desc_set, pass->gbuffer_velocity_binding, s->dummy_black);
-		GPU_SetTextureBinding(desc_set, pass->gbuffer_velocity_prev_binding, s->dummy_black);
-		GPU_SetTextureBinding(desc_set, pass->lighting_result_rt, s->dummy_black);
+		GPU_SetTextureBinding(desc_set, pass->prev_frame_result_binding, renderer->dummy_black);
+		GPU_SetTextureBinding(desc_set, pass->gbuffer_depth_binding, renderer->dummy_black);
+		GPU_SetTextureBinding(desc_set, pass->gbuffer_depth_prev_binding, renderer->dummy_black);
+		GPU_SetTextureBinding(desc_set, pass->gbuffer_velocity_binding, renderer->dummy_black);
+		GPU_SetTextureBinding(desc_set, pass->gbuffer_velocity_prev_binding, renderer->dummy_black);
+		GPU_SetTextureBinding(desc_set, pass->lighting_result_rt, renderer->dummy_black);
 
 		GPU_FinalizeDescriptorSet(desc_set);
 		part->descriptor_set = desc_set;
 	}
 
 	aiReleaseImport(scene);
-
-	assert(arena != TEMP);
-	DS_ArenaSetMark(TEMP, T);
-	return true;
+	return render_object;
 }
-
-#endif

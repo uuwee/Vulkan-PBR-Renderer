@@ -1,5 +1,6 @@
 #include "common.h"
 #include "render.h"
+#include "asset_import.h"
 
 #define FIRE_OS_WINDOW_IMPLEMENTATION
 #include "src/fire/fire_os_window.h"
@@ -20,8 +21,10 @@ int main() {
 
 	GPU_Init(window.handle);
 	
+	GPU_Texture* tex_env_cube = MakeTextureFromHDRIFile("../resources/shipyard_cranes_track_cube.hdr");
+
 	Renderer renderer = {};
-	InitRenderer(&renderer, window_width, window_height);
+	InitRenderer(&renderer, window_width, window_height, tex_env_cube);
 	
 	Camera camera = {};
 	camera.pos = {0.f, 5.f, 5.f};
@@ -31,33 +34,11 @@ int main() {
 	GPU_Graph* graphs[2];
 	GPU_MakeSwapchainGraphs(2, &graphs[0]);
 	int graph_idx = 0;
+
+	RenderObject ro_world = LoadMesh(&renderer, "../resources/SunTemple/SunTemple.fbx");
+	RenderObject ro_skybox = LoadMesh(&renderer, "../resources/Skybox_200x200x200.fbx");
 	
 	Input_Frame inputs = {};
-
-	__debugbreak();
-#if 0
-	// load random resources...
-	if (r->is_outdated[ASSETS.TEX_ENV_CUBE]) {
-		int x, y, comp;
-		void* data = stbi_loadf(ASSET_PATHS[ASSETS.TEX_ENV_CUBE].data, &x, &y, &comp, 4);
-		assert(y == x*6);
-		
-		s->textures[ASSETS.TEX_ENV_CUBE] = GPU_MakeTexture(GPU_Format_RGBA32F, (uint32_t)x, (uint32_t)x, 1, GPU_TextureFlag_Cubemap|GPU_TextureFlag_HasMipmaps, data);
-		
-		stbi_image_free(data);
-	}
-	s->tex_env_cube = s->textures[ASSETS.TEX_ENV_CUBE];
-
-	if (r->is_outdated[ASSETS.MESH_WORLD]) {
-		assert(first);
-		bool ok = ReloadMesh(persistent_arena, s, &s->ro_world, ASSET_PATHS[ASSETS.MESH_WORLD]);
-		assert(ok);
-	}
-
-	if (r->is_outdated[ASSETS.MESH_SKYBOX]) {
-		assert(ReloadMesh(persistent_arena, s, &s->ro_skybox, ASSET_PATHS[ASSETS.MESH_SKYBOX]));
-	}
-#endif
 	
 	while (!OS_WINDOW_ShouldClose(&window)) {
 		DS_ArenaReset(&frame_temp_arena);
@@ -97,10 +78,14 @@ int main() {
 		GPU_Texture* backbuffer = GPU_GetBackbuffer(graph);
 
 		if (backbuffer) {
-			BuildRenderCommands(&renderer, graph, backbuffer, camera, sun_angle);
+			BuildRenderCommands(&renderer, graph, backbuffer, &ro_world, &ro_skybox, tex_env_cube, camera, sun_angle);
 			GPU_GraphSubmit(graph);
 		}
 	}
+
+	UnloadMesh(&ro_world);
+	UnloadMesh(&ro_skybox);
+	GPU_DestroyTexture(tex_env_cube);
 
 	return 0;
 }

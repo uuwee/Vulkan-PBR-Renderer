@@ -2,12 +2,6 @@
 #include "render.h"
 #include "os_utils.h"
 
-#define STB_IMAGE_STATIC
-#define STB_IMAGE_IMPLEMENTATION
-#include "third_party/stb_image.h"
-
-#include "third_party/ddspp.h"
-
 extern DS_Arena* TEMP; // Arena for per-frame, temporary allocations
 
 // Should we move the hotreloader into Utils? The same way camera is an util.
@@ -651,11 +645,11 @@ static HMM_Vec2 r2_sequence(float n) {
 	return {fmodf(v.X, 1.f), fmodf(v.Y, 1.f)};
 }
 
-void InitRenderer(Renderer* renderer, uint32_t window_width, uint32_t window_height) {
-	
+void InitRenderer(Renderer* renderer, uint32_t window_width, uint32_t window_height, GPU_Texture* tex_env_cube) {
 	renderer->window_width = window_width;
 	renderer->window_height = window_height;
-
+	renderer->tex_env_cube = tex_env_cube;
+	
 	for (int i = 0; i < ShaderAsset_COUNT; i++) {
 		renderer->shader_hotreloader.shader_is_outdated[i] = true;
 	}
@@ -873,7 +867,8 @@ void InitRenderer(Renderer* renderer, uint32_t window_width, uint32_t window_hei
 	}
 }
 
-void BuildRenderCommands(Renderer* renderer, GPU_Graph* graph, GPU_Texture* backbuffer, const Camera& camera, HMM_Vec2 sun_angle) {
+void BuildRenderCommands(Renderer* renderer, GPU_Graph* graph, GPU_Texture* backbuffer, RenderObject* ro_world, RenderObject* ro_skybox, GPU_Texture* tex_env_cube, const Camera& camera, HMM_Vec2 sun_angle)
+{
 	uint32_t frame_idx = renderer->frame_idx;
 	uint32_t frame_idx_mod2 = frame_idx % 2;
 
@@ -921,8 +916,8 @@ void BuildRenderCommands(Renderer* renderer, GPU_Graph* graph, GPU_Texture* back
 	GPU_OpPrepareRenderPass(graph, renderer->sun_depth_render_pass);
 
 	DS_DynArray(uint32_t) sun_depth_pass_part_draw_params = {TEMP};
-	for (int i = 0; i < renderer->ro_world.parts.count; i++) {
-		RenderObjectPart* part = &renderer->ro_world.parts[i];
+	for (int i = 0; i < ro_world->parts.count; i++) {
+		RenderObjectPart* part = &ro_world->parts[i];
 
 		uint32_t draw_params = GPU_OpPrepareDrawParams(graph, renderer->sun_depth_pipeline, part->descriptor_set);
 		DS_ArrPush(&sun_depth_pass_part_draw_params, draw_params);
@@ -930,12 +925,12 @@ void BuildRenderCommands(Renderer* renderer, GPU_Graph* graph, GPU_Texture* back
 
 	GPU_OpBeginRenderPass(graph);
 
-	GPU_OpBindVertexBuffer(graph, renderer->ro_world.vertex_buffer);
-	GPU_OpBindIndexBuffer(graph, renderer->ro_world.index_buffer);
+	GPU_OpBindVertexBuffer(graph, ro_world->vertex_buffer);
+	GPU_OpBindIndexBuffer(graph, ro_world->index_buffer);
 	// GPU_OpPushGraphicsConstants(graph, &time, sizeof(time));
 
-	for (int i = 0; i < renderer->ro_world.parts.count; i++) {
-		RenderObjectPart* part = &renderer->ro_world.parts[i];
+	for (int i = 0; i < ro_world->parts.count; i++) {
+		RenderObjectPart* part = &ro_world->parts[i];
 		GPU_OpBindDrawParams(graph, sun_depth_pass_part_draw_params[i]);
 		GPU_OpDrawIndexed(graph, part->index_count, 1, part->first_index, 0, 0);
 	}
@@ -962,16 +957,16 @@ void BuildRenderCommands(Renderer* renderer, GPU_Graph* graph, GPU_Texture* back
 		GPU_OpPrepareRenderPass(graph, renderer->lightgrid_voxelize_render_pass);
 
 		DS_DynArray(uint32_t) voxelize_pass_part_draw_paramss = {TEMP};
-		for (int i = 0; i < renderer->ro_world.parts.count; i++) {
-			RenderObjectPart* part = &renderer->ro_world.parts[i];
+		for (int i = 0; i < ro_world->parts.count; i++) {
+			RenderObjectPart* part = &ro_world->parts[i];
 			uint32_t draw_params = GPU_OpPrepareDrawParams(graph, renderer->lightgrid_voxelize_pipeline, part->descriptor_set);
 			DS_ArrPush(&voxelize_pass_part_draw_paramss, draw_params);
 		}
 
 		GPU_OpBeginRenderPass(graph);
 
-		for (int i = 0; i < renderer->ro_world.parts.count; i++) {
-			RenderObjectPart* part = &renderer->ro_world.parts[i];
+		for (int i = 0; i < ro_world->parts.count; i++) {
+			RenderObjectPart* part = &ro_world->parts[i];
 			GPU_OpBindDrawParams(graph, voxelize_pass_part_draw_paramss[i]);
 			GPU_OpDraw(graph, part->index_count, 1, part->first_index, 0);
 		}
@@ -997,8 +992,8 @@ void BuildRenderCommands(Renderer* renderer, GPU_Graph* graph, GPU_Texture* back
 	GPU_OpPrepareRenderPass(graph, renderer->geometry_render_pass[frame_idx_mod2]);
 	
 	DS_DynArray(uint32_t) geometry_pass_part_draw_params = {TEMP};
-	for (int i = 0; i < renderer->ro_world.parts.count; i++) {
-		RenderObjectPart* part = &renderer->ro_world.parts[i];
+	for (int i = 0; i < ro_world->parts.count; i++) {
+		RenderObjectPart* part = &ro_world->parts[i];
 		uint32_t draw_params = GPU_OpPrepareDrawParams(graph, renderer->geometry_pass_pipeline[frame_idx_mod2], part->descriptor_set);
 		DS_ArrPush(&geometry_pass_part_draw_params, draw_params);
 	}
@@ -1006,16 +1001,16 @@ void BuildRenderCommands(Renderer* renderer, GPU_Graph* graph, GPU_Texture* back
 	GPU_OpBeginRenderPass(graph);
 
 	{
-		GPU_OpBindVertexBuffer(graph, renderer->ro_world.vertex_buffer);
-		GPU_OpBindIndexBuffer(graph, renderer->ro_world.index_buffer);
+		GPU_OpBindVertexBuffer(graph, ro_world->vertex_buffer);
+		GPU_OpBindIndexBuffer(graph, ro_world->index_buffer);
 
 		HMM_Vec2 constants[2];
 		constants[0] = taa_jitter;
 		constants[1] = renderer->taa_jitter_prev_frame;
 		GPU_OpPushGraphicsConstants(graph, renderer->main_pass_layout.pipeline_layout, constants, sizeof(constants));
 
-		for (int i = 0; i < renderer->ro_world.parts.count; i++) {
-			RenderObjectPart* part = &renderer->ro_world.parts[i];
+		for (int i = 0; i < ro_world->parts.count; i++) {
+			RenderObjectPart* part = &ro_world->parts[i];
 			GPU_OpBindDrawParams(graph, geometry_pass_part_draw_params[i]);
 			GPU_OpDrawIndexed(graph, part->index_count, 1, part->first_index, 0, 0);
 		}
@@ -1023,11 +1018,11 @@ void BuildRenderCommands(Renderer* renderer, GPU_Graph* graph, GPU_Texture* back
 
 	// Draw skybox
 	{
-		GPU_OpBindVertexBuffer(graph, renderer->ro_skybox.vertex_buffer);
-		GPU_OpBindIndexBuffer(graph, renderer->ro_skybox.index_buffer);
+		GPU_OpBindVertexBuffer(graph, ro_skybox->vertex_buffer);
+		GPU_OpBindIndexBuffer(graph, ro_skybox->index_buffer);
 
-		for (int i = 0; i < renderer->ro_skybox.parts.count; i++) {
-			RenderObjectPart* part = &renderer->ro_skybox.parts[i];
+		for (int i = 0; i < ro_skybox->parts.count; i++) {
+			RenderObjectPart* part = &ro_skybox->parts[i];
 			GPU_OpBindDrawParams(graph, geometry_pass_part_draw_params[i]);
 			GPU_OpDrawIndexed(graph, part->index_count, 1, part->first_index, 0, 0);
 		}

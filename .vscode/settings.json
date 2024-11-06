@@ -1,0 +1,7 @@
+{
+	"files.associations": {
+		".demo.ffz": "odin",
+		"*.ffz": "odin",
+		"fire_string.h": "c"
+	}
+}

@@ -16,11 +16,6 @@
 
 #define GPU_TODO() DS_ASSERT(0)
 
-
-#ifndef GPU_VALIDATION_ENABLED
-#define GPU_VALIDATION_ENABLED true
-#endif
-
 #ifndef GPU_REVERSE_DEPTH
 #define GPU_REVERSE_DEPTH false
 #endif
@@ -972,21 +967,21 @@ GPU_API void GPU_Init(GPU_WindowHandle window) {
 		app_info.pApplicationName = "MyApplication";
 		app_info.apiVersion = VK_MAKE_VERSION(1, 3, 0); // TODO: make this work for older versions
 
-#if GPU_VALIDATION_ENABLED
+#ifdef GPU_ENABLE_VALIDATION
 		const char* validation_layers[] = { "VK_LAYER_KHRONOS_validation" };
 #endif
 		VkInstanceCreateInfo create_info = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
 		create_info.enabledExtensionCount = DS_ArrayCount(extensions);
 		create_info.ppEnabledExtensionNames = extensions;
 		create_info.pApplicationInfo = &app_info;
-#if GPU_VALIDATION_ENABLED
+#ifdef GPU_ENABLE_VALIDATION
 		create_info.enabledLayerCount = DS_ArrayCount(validation_layers);
 		create_info.ppEnabledLayerNames = validation_layers;
 #endif
 
 		GPU_CheckVK(vkCreateInstance(&create_info, NULL, &GPU_STATE.instance));
 
-#if GPU_VALIDATION_ENABLED
+#ifdef GPU_ENABLE_VALIDATION
 		// Get the function pointer (required for any extensions)
 		PFN_vkCreateDebugReportCallbackEXT vkCreateDebugReportCallbackEXT = (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(GPU_STATE.instance, "vkCreateDebugReportCallbackEXT");
 		DS_ASSERT(vkCreateDebugReportCallbackEXT != NULL);
