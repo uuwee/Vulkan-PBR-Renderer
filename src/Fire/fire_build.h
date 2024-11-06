@@ -81,8 +81,9 @@ BUILD_API bool BUILD_CompileProject(BUILD_Project* project, const char* project_
 BUILD_API bool BUILD_CreateVisualStudioSolution(const char* project_directory, const char* relative_build_directory,
 	const char* solution_name, BUILD_Project** projects, int projects_count, BUILD_Log* log_or_null);
 
-// If the directory already exists or is successfully created, true is returned.
-BUILD_API bool BUILD_CreateDirectory(const char* directory);
+// Filesystem utilities that are commonly needed for build scripts
+BUILD_API bool BUILD_CreateDirectory(const char* directory); // If the directory already exists or is successfully created, true is returned.
+BUILD_API bool BUILD_CopyFile(const char* file, const char* new_file);
 
 // String concatenation utilities - the returned string is heap-allocated.
 BUILD_API char* BUILD_Concat2(const char* a, const char* b);
@@ -792,6 +793,10 @@ BUILD_API bool BUILD_CompileProject(BUILD_Project* project, const char* project_
 BUILD_API bool BUILD_CreateDirectory(const char* directory) {
 	bool success = CreateDirectoryA(directory, NULL); // TODO: Unicode support
 	return success || GetLastError() == ERROR_ALREADY_EXISTS;
+}
+
+BUILD_API bool BUILD_CopyFile(const char* file, const char* new_file) {
+	return CopyFileA(file, new_file, FALSE);
 }
 
 static void BUILD_StringFromGUID(GUID* guid, wchar_t buffer[128]) {

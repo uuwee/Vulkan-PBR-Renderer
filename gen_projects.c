@@ -69,6 +69,9 @@ int main() {
 	BUILD_Project* projects[] = {&triangle, &simple_pbr, &gi_pbr};
 	BUILD_CreateDirectory("build");
 	
+	// Copy Assimp dll to the build directory
+	BUILD_CopyFile("third_party/assimp/lib/assimp-vc143-mt.dll", "build/assimp-vc143-mt.dll");
+	
 	if (BUILD_CreateVisualStudioSolution("build", ".", "demos.sln", projects, ArrCount(projects), BUILD_GetConsole())) {
 		printf("Project files were generated successfully! See the \"build\" folder.\n");
 	}
