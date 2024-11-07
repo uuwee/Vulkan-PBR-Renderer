@@ -11,12 +11,8 @@ struct Globals {
 	vec3 camera_pos;
 	float frame_idx_mod_59;
 	float lightgrid_scale;
-	float alt_is_held_down;
+	uint visualize_light_grid;
 };
-
-//layout(push_constant) uniform Constants {
-//	//vec2 sun_jitter;
-//} PC;
 
 #define PI 3.14159265358979323846
 #define GOLDEN_RATIO 1.61803398875
@@ -185,13 +181,7 @@ vec2 r2_sequence(float n) {
 	
 	layout(location = 0) out vec4 out_color;
 
-	const vec3 lights[] = {
-		vec3(1., -3.5, 5.),
-		vec3(-2, 5, -5),
-		vec3(4, 2, 15),
-	};
-	
-	#define HORIZON_LOOP_NUM_STEPS 16
+	/*#define HORIZON_LOOP_NUM_STEPS 16
 
 	uint HorizonLoop(vec2 ray_pos_ndc, vec3 p0, vec3 slice_bisector, vec3 slice_tangent, float dir, vec2 rd, uint occluded_bits) {
 		float thickness = 100.01;
@@ -236,13 +226,12 @@ vec2 r2_sequence(float n) {
 			// 	gi_accumulation.w += 1.;
 			// }
 			
-			
 			// make a mask with bits (min_bit_idx <= x < max_bit_idx) set to 1
 			uint in_between_bits = ((1 << max_bit_idx) - 1) & ~((1 << min_bit_idx) - 1);
 			occluded_bits |= in_between_bits;
 		}
 		return occluded_bits;
-	}
+	}*/
 	
 	vec3 SampleRadiance(vec3 ray_origin, vec3 ray_direction, int num_steps, float step_scale) {
 		float voxel_scale = 2./128.;
@@ -389,7 +378,7 @@ vec2 r2_sequence(float n) {
 				// sampled_radiance = min(sampled_radiance, vec3(1.));
 				// sampled_radiance = aces_approx(sampled_radiance);
 				
-				if (GLOBALS.data.alt_is_held_down > 0.5) sampled_radiance *= 0.;
+				// if (GLOBALS.data.alt_is_held_down > 0.5) sampled_radiance *= 0.;
 				
 				// vec4 base_color = texture(sampler2D(GBUFFER_BASE_COLOR, SAMPLER_LINEAR_CLAMP), uv);
 				return sampled_radiance*ss_intensity;
@@ -472,15 +461,13 @@ vec2 r2_sequence(float n) {
 		// vec3 hash_xyz = Hash31(hash_1);
 		
 		// ---------------- VOXEL DEBUG RAY TRACER ----------------
-		if (false) {
-			// vec4 near_p = GLOBALS.data.world_space_from_clip * vec4(fs_uv*2.-1., 0.997, 1);
+		if (GLOBALS.data.visualize_light_grid != 0) {
 			vec4 near_p = GLOBALS.data.world_space_from_clip * vec4(fs_uv*2.-1., 0., 1);
 			near_p /= near_p.w;
 			
 			vec3 ro = near_p.xyz * GLOBALS.data.lightgrid_scale;
 			vec3 rd = normalize(near_p.xyz - GLOBALS.data.camera_pos) * (1. / 128.);
 			ro += noise_1*rd;
-			// ro += rd*20.;
 			
 			// it'd be cool to also see how accumulated rays work
 			vec4 sum = vec4(0, 0, 0, 0.00001);
@@ -488,10 +475,9 @@ vec2 r2_sequence(float n) {
 				ro += rd;
 				vec4 radiance = texture(sampler3D(LIGHTGRID, SAMPLER_LINEAR_CLAMP), ro*0.5 + 0.5);
 				
-				sum += vec4(radiance.xyz, 1);
+				// sum += vec4(radiance.xyz, 1);
 				if (radiance.a > 0.3) {
-					// if (radiance == vec4(0, 0, 0, 1) && fract(gl_FragCoord.x*(1./50.) + 0.1) > 0.98) sum = vec4(1., 0., 1., 1);
-					sum += 10.*vec4(radiance.xyz, 1);
+					sum = 10.*vec4(radiance.xyz, 1);
 					break;
 				}
 			}
@@ -503,17 +489,6 @@ vec2 r2_sequence(float n) {
 			out_color = vec4(sum.xyz, 1);
 			return;
 		}
-		
-		// hmm... so we can't have back faces because the sunlight hitting it will bleed into the interior of the model...
-		// {
-		// 	vec3 p = p0_world.xyz * GLOBALS.data.lightgrid_scale;
-		// 	vec3 radiance = texture(sampler3D(LIGHTGRID, SAMPLER_NEAREST_CLAMP), p*0.5 + 0.5).xyz;
-			
-		// 	float luminance = 0.299*radiance.x + 0.587*radiance.y + 0.114*radiance.z;
-		// 	radiance *= sqrt(luminance) / max(luminance, 0.0001);
-		// 	out_color = vec4(radiance, 1);
-		// 	return;
-		// }
 		
 		// -- SSAO ----------------------------------------------------
 		
@@ -580,8 +555,6 @@ vec2 r2_sequence(float n) {
 		mat3 TBN = mat3(tangent, bitangent, N);
 		// vec3 random_v_xy = tangent*cos(noise_1) + bitangent*sin(noise_1);
 		
-		// this is not good. I think we should use a more proper low-discrepency hemisphere sampling method.
-		
 		// http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
 		// ok, so we can first get uniform random positions in a 2D square using R2,
 		
@@ -647,6 +620,9 @@ vec2 r2_sequence(float n) {
 		// ---- light shaft ray ----------------------------------------------------------
 		
 #if 1
+		const float light_shaft_intensity = 0.001; // good for sun temple
+		// const float light_shaft_intensity    = 0.0002; // good for bistro
+		
 		// do tracing in shadow map space.
 		vec3 shaft_ray_pos = (GLOBALS.data.sun_space_from_world * vec4(GLOBALS.data.camera_pos.xyz, 1)).xyz;
 		// vec3 shaft_ray_goal = p0_sun_space;
@@ -670,13 +646,12 @@ vec2 r2_sequence(float n) {
 			vec3 sample_pos = vec3(shaft_ray_pos.xy*0.5 + 0.5, shaft_ray_pos.z);
 			
 			float visibility = texture(sampler2DShadow(SUN_DEPTH_MAP, SAMPLER_PERCENTAGE_CLOSER), sample_pos);
-			outgoing_light += 0.001 * visibility * sun_emission;
-			
+			outgoing_light += light_shaft_intensity * visibility * sun_emission;
 		}
 #endif
 
 		// -------------------------------------------------------------------------------
-
+		
 		// F0 is the reflectivity of the surface when viewed directly from the front at a 0-degree angle.
 		// We can use this reflectivity to determine the ratio of reflected light vs refracted light.
 		vec3 F0 = vec3(0.04);
@@ -708,7 +683,7 @@ vec2 r2_sequence(float n) {
 		vec3 ambient = vec3(0);
 		// ambient = SampleRadiance(p0_world.xyz, bent_normal, 12, 1.);
 		ambient = SampleRadianceWithScreenSpaceTrace(V, p0_view, p0_world.xyz, bent_normal, 12, 1., noise_3, 0.5, 0.75);
-		// vec3 ambient = SampleRadiance(p0_world.xyz, N, 16, 1.);
+		
 		outgoing_light += kD * ambient * base_color.xyz;
 		
 		// vec3 irradiance = textureLod(samplerCube(TEX_IRRADIANCE_MAP, SAMPLER_LINEAR_WRAP), bent_normal, 0.).rgb;
@@ -728,10 +703,8 @@ vec2 r2_sequence(float n) {
 		
 		// currently, prefilter_spec_color has the biggest leaks...
 		
-		outgoing_light += emissive;// + 0.25*(kD*ao*diffuse + prefilter_spec_color*(F0*fresnel_scale_bias.x + fresnel_scale_bias.y));
-		// outgoing_light += emissive + 0.5*ao*diffuse;
-		// outgoing_light += emissive + 0.5*diffuse;
-		
+		outgoing_light += emissive;
+	
 		if (clamp(p0_world.xyz, vec3(-99), vec3(99)) != p0_world.xyz) {
 			outgoing_light = textureLod(samplerCube(PREFILTERED_ENV_MAP, SAMPLER_LINEAR_CLAMP), -V, 1.).rgb;
 		}

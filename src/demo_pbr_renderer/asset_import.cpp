@@ -79,7 +79,7 @@ void UnloadMesh(RenderObject* mesh) {
 	*mesh = {};
 }
 
-RenderObject LoadMesh(Renderer* renderer, STR_View filepath, HMM_Vec3 offset) {
+RenderObject LoadMesh(Renderer* renderer, STR_View filepath, HMM_Vec3 offset, float scale) {
 	RenderObject render_object = {};
 	DS_ArrInit(&render_object.parts, DS_HEAP);
 	
@@ -123,7 +123,7 @@ RenderObject LoadMesh(Renderer* renderer, STR_View filepath, HMM_Vec3 offset) {
 			
 			// NOTE: flip Y and Z and texcoord y
 			Vertex v;
-			v.position  = {pos.x + offset.X, pos.z * -1.f + offset.Y, pos.y + offset.Z};
+			v.position  = {(pos.x + offset.X)*scale, (pos.z * -1.f + offset.Y)*scale, (pos.y + offset.Z)*scale};
 			v.normal    = {normal.x,  normal.z  * -1.f, normal.y};
 			v.tangent   = {tangent.x, tangent.z * -1.f, tangent.y};
 			v.tex_coord = {tex_coord.x, 1.f - tex_coord.y};

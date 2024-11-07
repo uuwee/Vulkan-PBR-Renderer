@@ -14,7 +14,6 @@ To generate project files for Visual Studio, run the `gen_projects.bat` script. 
 
 ## Screenshots
 
-![suntemple](/screenshots/SunTemple.jpg)
 ![bistro](/screenshots/Bistro.jpg)
-![spheres](/screenshots/pbr_spheres.jpg)
-![weapon](/screenshots/cerberus.jpg)
+![suntemple](/screenshots/SunTemple.jpg)
+![breakdown](/screenshots/Breakdown.jpg)

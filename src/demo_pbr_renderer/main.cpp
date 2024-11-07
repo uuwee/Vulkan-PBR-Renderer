@@ -13,8 +13,10 @@ int main() {
 
 	Camera camera = {};
 	camera.pos = {0.f, 5.f, 5.f};
+	camera.pos = {0.f, 0.f, 5.f};
 	
-	HMM_Vec2 sun_angle = {56.5f, 97.f};
+	RenderParameters render_params = {};
+	render_params.sun_angle = {56.5f, 97.f};
 
 	// --------------------
 
@@ -33,8 +35,11 @@ int main() {
 	Renderer renderer = {};
 	InitRenderer(&renderer, window_width, window_height);
 	
-	RenderObject world = LoadMesh(&renderer, "../resources/SunTemple/SunTemple.fbx", {0.f, 25.f, 0.f});
-	RenderObject skybox = LoadMesh(&renderer, "../resources/Skybox_200x200x200.fbx", {});
+	RenderObject world = LoadMesh(&renderer, "../resources/SunTemple/SunTemple.fbx", {0.f, 25.f, 0.f}, 1.f);
+	//RenderObject world = LoadMesh(&renderer, "C:/art_library/Bistro_v5_2/BistroInterior.fbx", {-7.f, -4.f, 0.f}, 4.2f);
+	//RenderObject world = LoadMesh(&renderer, "C:/art_library/Bistro_v5_2/BistroExterior.fbx", {-7.f, -4.f, 0.f}, 1.f);
+
+	RenderObject skybox = LoadMesh(&renderer, "../resources/Skybox_200x200x200.fbx", {}, 1.f);
 	GPU_Texture* tex_env_cube = MakeTextureFromHDRIFile("../resources/shipyard_cranes_track_cube.hdr");
 
 	GPU_Graph* graphs[2];
@@ -52,13 +57,16 @@ int main() {
 		while (OS_PollEvent(&window, &event, NULL, NULL)) {
 			Input::OS_AddEvent(&inputs, event);
 		}
+		
 		if (inputs.KeyIsDown(Input::Key::Escape)) break;
 
-		if (inputs.KeyIsDown(Input::Key::_9)) sun_angle.X -= 0.5f;
-		if (inputs.KeyIsDown(Input::Key::_0)) sun_angle.X += 0.5f;
-		if (inputs.KeyIsDown(Input::Key::_8)) sun_angle.Y -= 0.5f;
-		if (inputs.KeyIsDown(Input::Key::_7)) sun_angle.Y += 0.5f;
-		
+		// Debug controls
+		if (inputs.KeyIsDown(Input::Key::_9)) render_params.sun_angle.X -= 0.5f;
+		if (inputs.KeyIsDown(Input::Key::_0)) render_params.sun_angle.X += 0.5f;
+		if (inputs.KeyIsDown(Input::Key::_8)) render_params.sun_angle.Y -= 0.5f;
+		if (inputs.KeyIsDown(Input::Key::_7)) render_params.sun_angle.Y += 0.5f;
+		if (inputs.KeyWentDown(Input::Key::G)) render_params.visualize_lightgrid = !render_params.visualize_lightgrid;
+
 		HotreloadShaders(&renderer, tex_env_cube);
 		
 		float movement_speed = 0.05f;
@@ -74,7 +82,7 @@ int main() {
 
 		GPU_Texture* backbuffer = GPU_GetBackbuffer(graph);
 		if (backbuffer) {
-			BuildRenderCommands(&renderer, graph, backbuffer, &world, &skybox, camera, sun_angle);
+			BuildRenderCommands(&renderer, graph, backbuffer, &world, &skybox, camera, render_params);
 			GPU_GraphSubmit(graph);
 		}
 	}

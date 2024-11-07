@@ -1,6 +1,4 @@
 
-#define LIGHTGRID_SIZE 128
-
 #define BLOOM_PASS_COUNT 6
 
 #define SHADER_ASSETS \
@@ -134,7 +132,7 @@ struct RendererGlobalsBuffer {
 	HMM_Vec3 camera_pos;
 	float frame_idx_mod_59;
 	float lightgrid_scale;
-	float shift_is_held_down;
+	uint32_t visualize_lightgrid;
 };
 
 struct Renderer {
@@ -206,11 +204,17 @@ struct Renderer {
 	uint32_t sweep_direction;
 };
 
+struct RenderParameters {
+	HMM_Vec2 sun_angle;
+	bool visualize_lightgrid;
+};
+
 // -------------------------------------------------------------
 
 void InitRenderer(Renderer* r, uint32_t window_width, uint32_t window_height);
+
 void DeinitRenderer(Renderer* r);
 
 void HotreloadShaders(Renderer* r, GPU_Texture* tex_env_cube);
 
-void BuildRenderCommands(Renderer* rs, GPU_Graph* graph, GPU_Texture* backbuffer, RenderObject* world, RenderObject* skybox, const Camera& camera, HMM_Vec2 sun_angle);
+void BuildRenderCommands(Renderer* rs, GPU_Graph* graph, GPU_Texture* backbuffer, RenderObject* world, RenderObject* skybox, const Camera& camera, const RenderParameters& params);

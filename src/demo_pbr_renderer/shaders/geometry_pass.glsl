@@ -11,7 +11,7 @@ struct Globals {
 	vec3 camera_pos;
 	float frame_idx_mod_59;
 	float lightgrid_scale;
-	float alt_is_held_down;
+	uint visualize_light_grid;
 };
 
 #define PI 3.14159265358979323846

@@ -4,6 +4,8 @@
 
 extern DS_Arena* TEMP; // Arena for per-frame, temporary allocations
 
+#define LIGHTGRID_SIZE 128
+
 static GPU_ComputePipeline* MakeComputePipelineFromShader(ShaderAsset shader_asset, GPU_PipelineLayout* pipeline_layout, GPU_ShaderDesc* cs_desc) {
 	STR_View shader_path = ShaderAssetPaths[(int)shader_asset];
 	for (;;) {
@@ -59,9 +61,28 @@ static void LoadVertexAndFragmentShader(DS_Arena* arena, ShaderAsset shader_asse
 
 void HotreloadShaders(Renderer* r, GPU_Texture* tex_env_cube) {
 	DS_ArenaMark T = DS_ArenaGetMark(TEMP);
+	ShaderHotreloader* loader = &r->shader_hotreloader;
+
+	// Update hotreloader state
+	{
+		int check_idx = loader->next_check_shader_idx;
+		loader->next_check_shader_idx = (loader->next_check_shader_idx + 1) % (int)ShaderAsset::COUNT;
+
+		uint64_t modtime;
+		bool ok = OS_FileLastModificationTime(ShaderAssetPaths[check_idx], &modtime);
+		assert(ok);
+
+		if (loader->file_modtimes[check_idx] == 0) { // Initialize modtime for this file
+			loader->file_modtimes[check_idx] = modtime;
+		}
+
+		if (modtime != loader->file_modtimes[check_idx]) {
+			loader->shader_is_outdated[check_idx] = true;
+			loader->file_modtimes[check_idx] = modtime;
+		}
+	}
 	
-	ShaderHotreloader* reloader = &r->shader_hotreloader;
-	if (reloader->shader_is_outdated[(int)ShaderAsset::SunDepthPass]) {
+	if (loader->shader_is_outdated[(int)ShaderAsset::SunDepthPass]) {
 		MainPassLayout* pass = &r->main_pass_layout;
 		GPU_WaitUntilIdle();
 		GPU_DestroyGraphicsPipeline(r->sun_depth_pipeline);
@@ -89,7 +110,7 @@ void HotreloadShaders(Renderer* r, GPU_Texture* tex_env_cube) {
 		r->sun_depth_pipeline = GPU_MakeGraphicsPipeline(&desc);
 	}
 
-	if (reloader->shader_is_outdated[(int)ShaderAsset::LightgridVoxelize]) {
+	if (loader->shader_is_outdated[(int)ShaderAsset::LightgridVoxelize]) {
 		MainPassLayout* pass = &r->main_pass_layout;
 		GPU_WaitUntilIdle();
 		GPU_DestroyGraphicsPipeline(r->lightgrid_voxelize_pipeline);
@@ -127,7 +148,7 @@ void HotreloadShaders(Renderer* r, GPU_Texture* tex_env_cube) {
 		r->lightgrid_voxelize_pipeline = GPU_MakeGraphicsPipeline(&desc);
 	}
 
-	if (reloader->shader_is_outdated[(int)ShaderAsset::LightgridSweep]) {
+	if (loader->shader_is_outdated[(int)ShaderAsset::LightgridSweep]) {
 		MainPassLayout* pass = &r->main_pass_layout;
 		GPU_WaitUntilIdle();
 		GPU_DestroyComputePipeline(r->lightgrid_sweep_pipeline);
@@ -166,7 +187,7 @@ void HotreloadShaders(Renderer* r, GPU_Texture* tex_env_cube) {
 		r->lightgrid_sweep_desc_set = desc_set;
 	}
 
-	if (reloader->shader_is_outdated[(int)ShaderAsset::GeometryPass]) {
+	if (loader->shader_is_outdated[(int)ShaderAsset::GeometryPass]) {
 		MainPassLayout* pass = &r->main_pass_layout;
 		GPU_WaitUntilIdle();
 		for (int i = 0; i < 2; i++) {
@@ -213,7 +234,7 @@ void HotreloadShaders(Renderer* r, GPU_Texture* tex_env_cube) {
 		}
 	}
 
-	if (reloader->shader_is_outdated[(int)ShaderAsset::LightingPass]) {
+	if (loader->shader_is_outdated[(int)ShaderAsset::LightingPass]) {
 		LightingPassLayout* pass = &r->lighting_pass_layout;
 		GPU_WaitUntilIdle();
 		GPU_DestroyGraphicsPipeline(r->lighting_pass_pipeline);
@@ -257,7 +278,7 @@ void HotreloadShaders(Renderer* r, GPU_Texture* tex_env_cube) {
 		r->lighting_pass_pipeline = GPU_MakeGraphicsPipeline(&desc);
 	}
 
-	if (reloader->shader_is_outdated[(int)ShaderAsset::TAAResolve]) {
+	if (loader->shader_is_outdated[(int)ShaderAsset::TAAResolve]) {
 		MainPassLayout* pass = &r->main_pass_layout; // let's use the main pass layout for now.
 		GPU_WaitUntilIdle();
 
@@ -316,7 +337,7 @@ void HotreloadShaders(Renderer* r, GPU_Texture* tex_env_cube) {
 		}
 	}
 
-	if (reloader->shader_is_outdated[(int)ShaderAsset::BloomDownsample]) {
+	if (loader->shader_is_outdated[(int)ShaderAsset::BloomDownsample]) {
 		MainPassLayout* pass = &r->main_pass_layout; // let's use the main pass layout for now.
 		GPU_WaitUntilIdle();
 
@@ -374,7 +395,7 @@ void HotreloadShaders(Renderer* r, GPU_Texture* tex_env_cube) {
 		}
 	}
 
-	if (reloader->shader_is_outdated[(int)ShaderAsset::BloomUpsample]) {
+	if (loader->shader_is_outdated[(int)ShaderAsset::BloomUpsample]) {
 		MainPassLayout* pass = &r->main_pass_layout; // let's use the main pass layout for now.
 		GPU_WaitUntilIdle();
 
@@ -432,7 +453,7 @@ void HotreloadShaders(Renderer* r, GPU_Texture* tex_env_cube) {
 		}
 	}
 
-	if (reloader->shader_is_outdated[(int)ShaderAsset::FinalPostProcess]) {
+	if (loader->shader_is_outdated[(int)ShaderAsset::FinalPostProcess]) {
 		MainPassLayout* pass = &r->main_pass_layout; // let's use the main pass layout for now.
 		GPU_WaitUntilIdle();
 
@@ -481,7 +502,7 @@ void HotreloadShaders(Renderer* r, GPU_Texture* tex_env_cube) {
 		}
 	}
 
-	if (reloader->shader_is_outdated[(int)ShaderAsset::GenIrradianceMap]) {
+	if (loader->shader_is_outdated[(int)ShaderAsset::GenIrradianceMap]) {
 		GPU_PipelineLayout* pipeline_layout = GPU_InitPipelineLayout();
 		uint32_t sampler_binding = GPU_SamplerBinding(pipeline_layout, "SAMPLER_LINEAR_CLAMP");
 		uint32_t tex_env_cube_binding = GPU_TextureBinding(pipeline_layout, "TEX_ENV_CUBE");
@@ -518,7 +539,7 @@ void HotreloadShaders(Renderer* r, GPU_Texture* tex_env_cube) {
 		GPU_DestroyPipelineLayout(pipeline_layout);
 	}
 
-	if (reloader->shader_is_outdated[(int)ShaderAsset::GenPrefilteredEnvMap]) {
+	if (loader->shader_is_outdated[(int)ShaderAsset::GenPrefilteredEnvMap]) {
 		GPU_PipelineLayout* pipeline_layout = GPU_InitPipelineLayout();
 		uint32_t sampler_binding = GPU_SamplerBinding(pipeline_layout, "SAMPLER_LINEAR_CLAMP");
 		uint32_t tex_env_cube_binding = GPU_TextureBinding(pipeline_layout, "TEX_ENV_CUBE");
@@ -567,7 +588,7 @@ void HotreloadShaders(Renderer* r, GPU_Texture* tex_env_cube) {
 		GPU_DestroyPipelineLayout(pipeline_layout);
 	}
 
-	if (reloader->shader_is_outdated[(int)ShaderAsset::GenBRDFIntegrationMap]) {
+	if (loader->shader_is_outdated[(int)ShaderAsset::GenBRDFIntegrationMap]) {
 		GPU_PipelineLayout* pipeline_layout = GPU_InitPipelineLayout();
 		uint32_t output_binding = GPU_StorageImageBinding(pipeline_layout, "OUTPUT", GPU_Format_RG16F);
 		GPU_FinalizePipelineLayout(pipeline_layout);
@@ -599,7 +620,7 @@ void HotreloadShaders(Renderer* r, GPU_Texture* tex_env_cube) {
 
 	// Finally, tell the hotreloader that we have checked everything
 	for (int i = 0; i < (int)ShaderAsset::COUNT; i++) {
-		reloader->shader_is_outdated[i] = false;
+		loader->shader_is_outdated[i] = false;
 	}
 
 	DS_ArenaSetMark(TEMP, T);
@@ -930,17 +951,18 @@ void DeinitRenderer(Renderer* r) {
 	*r = {};
 }
 
-void BuildRenderCommands(Renderer* r, GPU_Graph* graph, GPU_Texture* backbuffer, RenderObject* world, RenderObject* skybox, const Camera& camera, HMM_Vec2 sun_angle)
+void BuildRenderCommands(Renderer* r, GPU_Graph* graph, GPU_Texture* backbuffer, RenderObject* world, RenderObject* skybox, const Camera& camera, const RenderParameters& params)
 {
 	uint32_t frame_idx = r->frame_idx;
 	uint32_t frame_idx_mod2 = frame_idx % 2;
 
 	const float sun_half_size = 40.f;
+	const float lightgrid_extent = 40.f;
 
 	HMM_Mat4 sun_space_from_world;
 	HMM_Vec3 sun_dir;
 	{
-		HMM_Mat4 sun_ori = HMM_Rotate_RH(HMM_AngleDeg(sun_angle.X), HMM_V3(cosf(HMM_AngleDeg(sun_angle.Y)), sinf(HMM_AngleDeg(sun_angle.Y)), 0.f));
+		HMM_Mat4 sun_ori = HMM_Rotate_RH(HMM_AngleDeg(params.sun_angle.X), HMM_V3(cosf(HMM_AngleDeg(params.sun_angle.Y)), sinf(HMM_AngleDeg(params.sun_angle.Y)), 0.f));
 
 		sun_space_from_world = HMM_InvGeneralM4(sun_ori);
 		sun_space_from_world = HMM_MulM4(HMM_Orthographic_RH_ZO(-sun_half_size, sun_half_size, -sun_half_size, sun_half_size, -sun_half_size, sun_half_size), sun_space_from_world);
@@ -951,8 +973,6 @@ void BuildRenderCommands(Renderer* r, GPU_Graph* graph, GPU_Texture* backbuffer,
 	HMM_Vec2 taa_jitter = r2_sequence((float)frame_idx);
 	taa_jitter.X = (taa_jitter.X * 2.f - 1.f) / (float)r->window_width;
 	taa_jitter.Y = (taa_jitter.Y * 2.f - 1.f) / (float)r->window_height;
-	
-	const float LIGHTGRID_EXTENT_WS = 40.f;
 
 	RendererGlobalsBuffer globals;
 	globals.clip_space_from_world = camera.clip_from_world;
@@ -966,8 +986,8 @@ void BuildRenderCommands(Renderer* r, GPU_Graph* graph, GPU_Texture* backbuffer,
 	globals.sun_direction.XYZ = sun_dir;
 	globals.camera_pos = camera.lazy_pos;
 	globals.frame_idx_mod_59 = (float)(frame_idx % 59);
-	globals.lightgrid_scale = 1.f / LIGHTGRID_EXTENT_WS;
-	globals.shift_is_held_down = false; // (float)Input_IsDown(&inputs, Input_Key_Alt);
+	globals.lightgrid_scale = 1.f / lightgrid_extent;
+	globals.visualize_lightgrid = (uint32_t)params.visualize_lightgrid; // (float)Input_IsDown(&inputs, Input_Key_Alt);
 	memcpy(r->globals_buffer->data, &globals, sizeof(globals));
 
 	GPU_OpClearDepthStencil(graph, r->gbuffer_depth[frame_idx_mod2], GPU_MIP_LEVEL_ALL);
@@ -1001,7 +1021,7 @@ void BuildRenderCommands(Renderer* r, GPU_Graph* graph, GPU_Texture* backbuffer,
 
 	// -- Voxelize pass -------------------------
 
-	bool revoxelize = frame_idx == 0 || sun_angle != r->sun_angle_prev_frame;
+	bool revoxelize = frame_idx == 0 || params.sun_angle != r->sun_angle_prev_frame;
 	if (revoxelize) {
 
 		if (frame_idx == 0) {
@@ -1047,6 +1067,8 @@ void BuildRenderCommands(Renderer* r, GPU_Graph* graph, GPU_Texture* backbuffer,
 	GPU_OpBindComputePipeline(graph, r->lightgrid_sweep_pipeline);
 	GPU_OpBindComputeDescriptorSet(graph, r->lightgrid_sweep_desc_set);
 	GPU_OpPushComputeConstants(graph, r->main_pass_layout.pipeline_layout, &r->sweep_direction, sizeof(r->sweep_direction));
+	
+	assert(LIGHTGRID_SIZE == 128);
 	GPU_OpDispatch(graph, 1, 16, 16); // 1*1, 16*8, 16*8 = (1, 128, 128)
 
 	// -- Geometry pass -------------------------
@@ -1170,5 +1192,5 @@ void BuildRenderCommands(Renderer* r, GPU_Graph* graph, GPU_Texture* backbuffer,
 	r->taa_jitter_prev_frame = taa_jitter;
 	r->frame_idx++;
 	r->clip_space_from_world_prev_frame = camera.clip_from_world;
-	r->sun_angle_prev_frame = sun_angle;
+	r->sun_angle_prev_frame = params.sun_angle;
 }
