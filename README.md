@@ -2,7 +2,7 @@
 
 Physically based Vulkan renderer demo with dynamic global illumination.
 
-[Read more about this project in my article](https://eeromutka.github.io/projects/vulkan_renderer.html)
+[Read more about this project in my article](https://eeromutka.github.io/projects/vulkan_renderer)
 
 ## Building
 
