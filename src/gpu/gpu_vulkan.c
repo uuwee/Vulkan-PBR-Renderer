@@ -302,7 +302,7 @@ typedef struct GPU_Graph {
 
 // -- global state ------------------------------------------------------------
 
-GPU_State GPU_STATE; // :GLSLangInitNote
+GPU_State GPU_STATE;
 
 // ----------------------------------------------------------------------------
 
@@ -745,13 +745,6 @@ static void GPU_SetBinding(GPU_DescriptorSet* set, uint32_t binding, void* value
 	DS_ProfEnter();
 	if (value == NULL) {
 		GPU_TODO(); // We should figure out what to do with passing NULL descriptor to cubemap textures, as vulkan gives a validation error if the nil image has the wrong image view type
-
-		//switch (kind) {
-		//case GPU_ResourceKind_Buffer:  { value = GPU_STATE.nil_storage_buffer; } break;
-		//case GPU_ResourceKind_Sampler: { value = GPU_STATE.nil_sampler; } break;
-		//case GPU_ResourceKind_Texture: { value = GPU_STATE.nil_storage_image; } break;
-		//case GPU_ResourceKind_StorageImage: { value = GPU_STATE.nil_storage_image; } break;
-		//}
 	}
 
 	GPU_BindingInfo binding_info = DS_ArrGet(set->pipeline_layout->bindings, binding);
@@ -950,34 +943,35 @@ GPU_API void GPU_Init(GPU_WindowHandle window) {
 
 	memset(&GPU_STATE, 0, sizeof(GPU_STATE));
 	GPU_STATE.window = window;
+	
 	DS_ArenaInit(&GPU_STATE.temp_arena, DS_KIB(1), DS_HEAP);
 	DS_BucketArrayInit(&GPU_STATE.entities, DS_HEAP, 64);
 
 	DS_ArenaMark T = DS_ArenaGetMark(&GPU_STATE.temp_arena);
 
 	{ // Create Vulkan Instance
-		const char* extensions[] = {
-			"VK_KHR_surface",
-			//"VK_EXT_debug_report",
-			"VK_KHR_win32_surface",
-		};
+		
+		DS_DynArray(const char*) extensions = {&GPU_STATE.temp_arena};
+		DS_ArrPush(&extensions, "VK_KHR_surface");
+		DS_ArrPush(&extensions, "VK_KHR_win32_surface");
+		
+		DS_DynArray(const char*) validation_layers = {&GPU_STATE.temp_arena};
+		
+#ifdef GPU_ENABLE_VALIDATION
+		DS_ArrPush(&extensions, "VK_EXT_debug_report");
+		DS_ArrPush(&validation_layers, "VK_LAYER_KHRONOS_validation");
+#endif
 
-		// VK_EXT_conservative_rasterization
 		VkApplicationInfo app_info = { VK_STRUCTURE_TYPE_APPLICATION_INFO };
 		app_info.pApplicationName = "MyApplication";
 		app_info.apiVersion = VK_MAKE_VERSION(1, 3, 0); // TODO: make this work for older versions
 
-#ifdef GPU_ENABLE_VALIDATION
-		const char* validation_layers[] = { "VK_LAYER_KHRONOS_validation" };
-#endif
 		VkInstanceCreateInfo create_info = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
-		create_info.enabledExtensionCount = DS_ArrayCount(extensions);
-		create_info.ppEnabledExtensionNames = extensions;
+		create_info.enabledExtensionCount = extensions.count;
+		create_info.ppEnabledExtensionNames = extensions.data;
 		create_info.pApplicationInfo = &app_info;
-#ifdef GPU_ENABLE_VALIDATION
-		create_info.enabledLayerCount = DS_ArrayCount(validation_layers);
-		create_info.ppEnabledLayerNames = validation_layers;
-#endif
+		create_info.enabledLayerCount = validation_layers.count;
+		create_info.ppEnabledLayerNames = validation_layers.data;
 
 		GPU_CheckVK(vkCreateInstance(&create_info, NULL, &GPU_STATE.instance));
 
@@ -1157,9 +1151,7 @@ GPU_API void GPU_Deinit() {
 
 	vkDestroyCommandPool(GPU_STATE.device, GPU_STATE.cmd_pool, NULL);
 
-	//vkDestroyPipelineLayout(GPU_STATE.device, GPU_STATE.pipeline_layout, NULL);
 	vkDestroyDescriptorPool(GPU_STATE.device, GPU_STATE.global_descriptor_pool, NULL);
-	//vkDestroyDescriptorSetLayout(GPU_STATE.device, GPU_STATE.descriptor_set_layout, NULL);
 
 	GPU_DestroySwapchain(&GPU_STATE.swapchain);
 	vkDestroySurfaceKHR(GPU_STATE.instance, GPU_STATE.surface, NULL);
@@ -1173,7 +1165,7 @@ GPU_API void GPU_Deinit() {
 	vkDestroyDevice(GPU_STATE.device, NULL);
 	vkDestroyInstance(GPU_STATE.instance, NULL);
 
-	glslang_finalize_process(); // Right now, we use global state for GPU (can't have multiple instances at the same time), so this is fine. But if we change the fact, we need to deal with this being per process, not per thread.  :GLSLangInitNote
+	glslang_finalize_process();
 
 	DS_BucketArrayDeinit(&GPU_STATE.entities);
 	DS_ArenaDeinit(&GPU_STATE.temp_arena);
@@ -1412,7 +1404,6 @@ GPU_API GPU_Texture* GPU_MakeTexture(GPU_Format format, uint32_t width, uint32_t
 	texture_impl->img_view = GPU_MakeImageView(info.format, info.usage, format_info, texture_impl, 0, VK_REMAINING_MIP_LEVELS);
 
 	if (make_atomics_img_view_with_format != GPU_Format_Invalid) {
-		//CB(_c, 2);
 		// We need to promise vulkan that we won't be using this image view to smample from the image.
 		VkImageUsageFlags atomics_usage = info.usage & ~(VK_IMAGE_USAGE_SAMPLED_BIT);
 		VkFormat atomics_format = GPU_GetVkFormat(make_atomics_img_view_with_format);
@@ -1446,7 +1437,6 @@ GPU_API GPU_Texture* GPU_MakeTexture(GPU_Format format, uint32_t width, uint32_t
 			GPU_OpGenerateMipmaps(graph, &texture_impl->base);
 		}
 
-		//CB(__c, 1);
 		GPU_GraphSubmit(graph);
 		GPU_GraphWait(graph);
 		GPU_DestroyGraph(graph);
@@ -1900,7 +1890,6 @@ GPU_API GPU_ComputePipeline* GPU_MakeComputePipeline(GPU_PipelineLayout* layout,
 	GPU_ComputePipeline* pipeline = &GPU_NewEntity()->compute_pipeline;
 	pipeline->layout = layout;
 
-
 	VkShaderModule compute_shader;
 	GPU_ShaderDesc cs_desc = *cs;
 	if (cs_desc.spirv.length == 0) {
@@ -2038,10 +2027,6 @@ GPU_API GPU_String GPU_SPIRVFromGLSL(DS_Arena* arena, GPU_ShaderStage stage, GPU
 	DS_ArrPushN(&glsl, desc->glsl.data, (int)desc->glsl.length);
 	DS_ArrPush(&glsl, 0); // null termination
 
-	// GPU_DebugLog("=========== GPU_STATE / Generated shader ===========\n");
-	// GPU_DebugLog("~s\n", generated_glsl.str);
-	// GPU_DebugLog("===============================================\n");
-
 	GPU_GLSLIncludeHandlerCtx includer_handler = {0};
 	includer_handler.temp = &GPU_STATE.temp_arena;
 	includer_handler.includer = desc->glsl_includer;
@@ -2156,38 +2141,6 @@ GPU_API GPU_String GPU_SPIRVFromGLSL(DS_Arena* arena, GPU_ShaderStage stage, GPU
 				DS_ArrPush(&errors, error);
 			}
 		}
-#if 0
-		StrRangeArray lines = StrSplit(&GPU_STATE.temp_arena, log, '\n');
-
-		// if (out_errors == NULL) GPU_DebugLog("GPU_STATE: Errors in a shader (~s) that was guaranteed to be valid by the user:\n", desc->glsl_debug_filepath);
-
-		// Since we modified the GLSL code, the error lines will be wrong. Let's map the line numbers back to the user code.
-		uint32_t generated_glsl_line_count = (uint32_t)StrSplit(&GPU_STATE.temp_arena, glsl.str, '\n').length;
-		uint32_t desc_glsl_line_count = (uint32_t)StrSplit(&GPU_STATE.temp_arena, desc->glsl, '\n').length;
-		uint32_t generated_extra_lines_count = generated_glsl_line_count - desc_glsl_line_count;
-
-		DS_DynArray(GPU_GLSLError) errors = { .arena = arena };
-
-		DS_ArrEach(StrRange, &lines, it) {
-			String line_str = StrSlice(log, it.elem->min, it.elem->max);
-			if (StrCutStart(&line_str, STR_("ERROR: 0:"))) {
-				StrRange second_colon_range;
-				DS_ASSERT(StrFind(line_str, STR_(":"), &second_colon_range));
-
-				int64_t line_idx;
-				String line_number_str = StrSliceBefore(line_str, second_colon_range.min);
-				DS_ASSERT(StrToI64Ex(line_number_str, 10, &line_idx));
-
-				line_str = StrSliceAfter(line_str, second_colon_range.max);
-				while (StrCutStart(&line_str, STR_(" "))) {}
-
-				GPU_GLSLError error = { .shader_stage = stage, .line = (uint32_t)(line_idx - generated_extra_lines_count), .error_message = line_str };
-				// if (out_errors == NULL) GPU_DebugLog(" line ~i64: ~s\n", error.line, error.error_message);
-				// else DS_ArrPush(&errors, error);
-				DS_ArrPush(&errors, error);
-			}
-		}
-#endif
 
 		if (out_errors == NULL) DS_ASSERT(false);
 		out_errors->data = errors.data;
@@ -2389,20 +2342,12 @@ GPU_API GPU_DescriptorArena* GPU_MakeDescriptorArena() {
 
 GPU_API void GPU_ResetDescriptorArena(GPU_DescriptorArena* descriptor_arena) {
 	vkResetDescriptorPool(GPU_STATE.device, descriptor_arena->pool, 0);
-
-	// descriptor_arena->last_pool = &descriptor_arena->first_pool;
 	DS_ArenaReset(&descriptor_arena->arena);
 }
 
 GPU_API void GPU_DestroyDescriptorArena(GPU_DescriptorArena* descriptor_arena) {
 	if (descriptor_arena) {
 		vkDestroyDescriptorPool(GPU_STATE.device, descriptor_arena->pool, NULL);
-		// for (GPU_DescriptorPool *pool = &descriptor_arena->first_pool; pool;) {
-		//	 GPU_DescriptorPool *next = pool->next;
-		// 	// GPU_FreeEntity((GPU_Entity*)pool);
-		//	 if (next) GPU_TODO();
-		//	 pool = next;
-		// }
 		DS_ArenaDeinit(&descriptor_arena->arena);
 		GPU_FreeEntity((GPU_Entity*)descriptor_arena);
 	}
@@ -2447,27 +2392,17 @@ GPU_API void GPU_DestroyGraph(GPU_Graph* graph) {
 
 	vkDestroyFence(GPU_STATE.device, graph->gpu_finished_working_fence, NULL);
 	vkFreeCommandBuffers(GPU_STATE.device, GPU_STATE.cmd_pool, 1, &graph->cmd_buffer);
-	// GPU_DestroyDescriptorArena(graph->descriptor_arena);
 	DS_ArenaDeinit(&graph->arena);
 }
 
 GPU_API GPU_Graph* GPU_MakeGraph(void) {
 	DS_Arena _arena;
-	// here it'd be nice to have some way to reuse arenas using slot allocators for the backing memory.
-	// I think I should add that feature to DS_Arena (still use malloc or VirtualAlloc as backing for too-large blocks).
-	// That would be pretty awesome. Then we could have lots of arenas without feeling bad about it,
-	// and even ditch malloc and free completely and just go to VirtualAlloc directly.
-	// ... but how to make it deterministic? I guess that would be up to FOS to provide a deterministic VirtualAlloc.
 	DS_ArenaInit(&_arena, DS_KIB(1), DS_HEAP);
 
 	GPU_Graph* graph = DS_New(GPU_Graph, &_arena);
 	graph->arena = _arena;
 	graph->arena_begin_mark = DS_ArenaGetMark(&graph->arena);
 	graph->frame.img_index = GPU_NOT_A_SWAPCHAIN_GRAPH;
-
-	// if (flags & GPU_GraphFlag_HasDescriptorArena) {
-	//	 graph->descriptor_arena = GPU_MakeDescriptorArena();
-	// }
 
 	VkCommandBufferAllocateInfo cmd_buffer_info = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
 	cmd_buffer_info.commandPool = GPU_STATE.cmd_pool;
@@ -2481,7 +2416,6 @@ GPU_API GPU_Graph* GPU_MakeGraph(void) {
 
 	GPU_GraphBegin(graph);
 
-	//graph->lifetime = GPU_LifetimeBeginEx(arena, GPU_LifetimeFlag_CreateDescriptorPool);
 	return graph;
 }
 
@@ -2514,13 +2448,10 @@ GPU_API void GPU_GraphWait(GPU_Graph* graph) {
 	DS_ArenaSetMark(&graph->arena, graph->arena_begin_mark);
 	memset(&graph->builder_state, 0, sizeof(graph->builder_state));
 
-	DS_ASSERT(graph->cmd_buffer != 0); // did you call GPU_GraphSubmit?
+	DS_ASSERT(graph->cmd_buffer != 0); // did you remember to call GPU_GraphSubmit?
+	
 	GPU_CheckVK(vkWaitForFences(GPU_STATE.device, 1, &graph->gpu_finished_working_fence, VK_TRUE, ~(uint64_t)0));
-
-	// if (graph->descriptor_arena) {
-	//	 GPU_ResetDescriptorArena(graph->descriptor_arena);
-	// }
-
+	
 	if (graph->frame.img_index != GPU_NOT_A_SWAPCHAIN_GRAPH) {
 		GPU_MaybeRecreateSwapchain();
 
@@ -2529,9 +2460,6 @@ GPU_API void GPU_GraphWait(GPU_Graph* graph) {
 
 		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 			graph->frame.backbuffer = NULL;
-			// TODO(); // maybe_recreate_swapchain();
-			// OLD_Print("RECREATE SWAPCHAIN FROM ACQUIRE\n");
-			// reset_fence = false;
 		}
 		else if (result != VK_SUBOPTIMAL_KHR) {
 			GPU_CheckVK(result);

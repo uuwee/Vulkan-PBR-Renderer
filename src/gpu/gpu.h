@@ -45,8 +45,7 @@ typedef struct GPU_FormatInfo {
 	const char* glsl; // glsl image format qualifier
 } GPU_FormatInfo;
 
-// For now, the list of formats is very conservative.
-// TODO: API to ask for what is supported, and document the support better here.
+// TODO: API to ask for what is supported by the driver
 // Different formats support different rendering features. See GPU_GetFormatInfo() to check for feature support per format.
 // Or alternatively, https://docs.vulkan.org/spec/latest/chapters/formats.html#features-required-format-support
 typedef enum GPU_Format {
@@ -152,8 +151,6 @@ typedef enum GPU_ShaderStage {
 	GPU_ShaderStage_Compute,
 } GPU_ShaderStage;
 
-//typedef Slice(GPU_Format) GPU_FormatSlice;
-
 typedef enum GPU_CullMode {
 	GPU_CullMode_TwoSided,
 	GPU_CullMode_DrawCW, // Draw only clockwise triangles
@@ -167,10 +164,6 @@ typedef enum GPU_LayoutHint {
 	GPU_LayoutHint_TransferDest,
 	GPU_LayoutHint_Present,
 } GPU_LayoutHint;
-
-//typedef enum GPU_GraphFlags {
-//	// GPU_GraphFlag_HasDescriptorArena = 1 << 0,
-//} GPU_GraphFlags;
 
 typedef int GPU_BufferFlags;
 typedef enum GPU_BufferFlag {
@@ -388,10 +381,6 @@ GPU_API void GPU_DestroyDescriptorArena(GPU_DescriptorArena* descriptor_arena); 
 
 // ------------------------------------------------------------------------------
 
-// TODO: For any resource creation/destruction thing, we should have GPU_InitDescriptorSets as the base API, and also a wrapper function that only does it for a single object.
-// hmm... If we want to allocate many descriptor sets from the same lifetime, what to do?
-// On GPU_Lifetime, we could add a flag to say "GPU_LifetimeFlag_MakeDescriptorPool"
-// * `descriptor_arena` may be NULL
 GPU_API GPU_DescriptorSet* GPU_InitDescriptorSet(GPU_DescriptorArena* descriptor_arena, GPU_PipelineLayout* pipeline_layout);
 GPU_API void GPU_DestroyDescriptorSet(GPU_DescriptorSet* set);
 
@@ -464,16 +453,11 @@ GPU_API void GPU_GraphWait(GPU_Graph* graph); // Wait will also implicitly reset
 GPU_API void GPU_DestroyGraph(GPU_Graph* graph); // You may only destroy a graph when the GPU is not working on it.
 
 // NOTE: You may only have one set of swapchain graphs alive at once.
-// Swapchain graphs are created with the GPU_GraphFlag_HasDescriptorArena flag.
 GPU_API void GPU_MakeSwapchainGraphs(uint32_t count, GPU_Graph** out_graphs);
-// void GPU_DestroySwapchainGraphs();
 
 // * Calling this is only valid for graphs created with GPU_MakeSwapchainGraph.
 // * NULL is returned if the window is minimized.
 GPU_API GPU_Texture* GPU_GetBackbuffer(GPU_Graph* graph);
-
-// * NULL is returned if the graph was not created with GPU_GraphFlag_HasDescriptorArena
-// GPU_DescriptorArena *GPU_GetDescriptorArena(GPU_Graph *graph);
 
 GPU_API void GPU_WaitUntilIdle();
 

@@ -3,43 +3,40 @@ struct Camera {
 	HMM_Vec3 pos;
 	HMM_Quat ori;
 
+	// for first-person controls
+	float pitch;
+	float yaw;
+
 	HMM_Vec3 lazy_pos;
 	HMM_Quat lazy_ori;
 
-	float aspect_ratio, z_near, z_far;
+	float aspect_ratio;
+	float z_near;
+	float z_far;
 
-	// The following are cached in `Camera_Update`, do not set by hand
+	// The following are cached in `UpdateCamera`, do not set by hand
 	HMM_Mat4 clip_from_world;
 	HMM_Mat4 clip_from_view;
 	HMM_Mat4 view_from_world;
 	HMM_Mat4 view_from_clip;
 	HMM_Mat4 world_from_view;
 	HMM_Mat4 world_from_clip;
+
+	inline HMM_Vec3 GetRight()   const { return world_from_view.Columns[0].XYZ; }
+
+	// The world & camera coordinates are always right handed. It's either +Y is down +Z forward, or +Y up +Z back
+	#ifdef CAMERA_VIEW_SPACE_IS_POSITIVE_Y_DOWN
+	inline HMM_Vec3 GetUp()      const { return HMM_MulV3F(world_from_view.Columns[1].XYZ, -1.f); }
+	inline HMM_Vec3 GetDown()    const { return world_from_view.Columns[1].XYZ; }
+	inline HMM_Vec3 GetForward() const { return world_from_view.Columns[2].XYZ; }
+	#else
+	inline HMM_Vec3 GetUp()      const { return world_from_view.Columns[1].XYZ; }
+	inline HMM_Vec3 GetDown()    const { return world_from_view.Columns[1].XYZ * -1.f; }
+	inline HMM_Vec3 GetForward() const { return world_from_view.Columns[2].XYZ * -1.f; }
+	#endif
 };
 
-static HMM_Vec3 Camera_Right(const Camera* camera) { return camera->world_from_view.Columns[0].XYZ; }
-
-// The world & camera coordinates are always right handed. It's either +Y is down +Z forward, or +Y up +Z back
-#ifdef CAMERA_VIEW_SPACE_IS_POSITIVE_Y_DOWN
-static HMM_Vec3 Camera_Up(const Camera* camera)        { return HMM_MulV3F(camera->world_from_view.Columns[1].XYZ, -1.f); }
-static HMM_Vec3 Camera_Down(const Camera* camera)      { return camera->world_from_view.Columns[1].XYZ; }
-static HMM_Vec3 Camera_Forward(const Camera* camera)   { return camera->world_from_view.Columns[2].XYZ; }
-#else
-static HMM_Vec3 Camera_Up(const Camera* camera)        { return camera->world_from_view.Columns[1].XYZ; }
-static HMM_Vec3 Camera_Down(const Camera* camera)      { return camera->world_from_view.Columns[1].XYZ * -1.f; }
-static HMM_Vec3 Camera_Forward(const Camera* camera)   { return camera->world_from_view.Columns[2].XYZ * -1.f; }
-#endif
-
-static HMM_Vec3 Camera_RotateV3(HMM_Quat q, HMM_Vec3 v) {
-	// from https://stackoverflow.com/questions/44705398/about-glm-quaternion-rotation
-	HMM_Vec3 a = v * q.W;
-	HMM_Vec3 b = HMM_Cross(q.XYZ, v);
-	HMM_Vec3 c = b + a;
-	HMM_Vec3 d = HMM_Cross(q.XYZ, c);
-	return v + d * 2.f;
-}
-
-static void Camera_Update(Camera* camera, Input_Frame* inputs, float movement_speed, float mouse_speed,
+static void UpdateCamera(Camera* camera, const Input::Frame& inputs, float movement_speed, float mouse_speed,
 	float FOV_degrees, float aspect_ratio_x_over_y, float z_near, float z_far)
 {
 	if (camera->ori.X == 0 && camera->ori.Y == 0 && camera->ori.Z == 0 && camera->ori.W == 0) { // reset ori?
@@ -49,53 +46,47 @@ static void Camera_Update(Camera* camera, Input_Frame* inputs, float movement_sp
 #else
 		camera->ori = HMM_QFromAxisAngle_RH(HMM_V3(1, 0, 0), HMM_PI32 / 2.f); // the HMM_PI32 / 2.f is to rotate the camera to face +Y (zero rotation would be facing -Z)
 #endif
-		//camera->lazy_ori = camera->ori;
 	}
 
-	bool has_focus = Input_IsDown(inputs, Input_Key_MouseRight) ||
-		Input_IsDown(inputs, Input_Key_LeftControl) ||
-		Input_IsDown(inputs, Input_Key_RightControl);
+	bool has_focus =
+		inputs.KeyIsDown(Input::Key::MouseRight) ||
+		inputs.KeyIsDown(Input::Key::LeftControl) ||
+		inputs.KeyIsDown(Input::Key::RightControl);
 
-	if (Input_IsDown(inputs, Input_Key_MouseRight)) {
+	if (inputs.KeyIsDown(Input::Key::MouseRight)) {
 		// we need to make rotators for the pitch delta and the yaw delta, and then just multiply the camera's orientation with it!
+		camera->yaw   += -mouse_speed * (float)inputs.raw_mouse_input[0];
+		camera->pitch += -mouse_speed * (float)inputs.raw_mouse_input[1];
 
-		float yaw_delta = -mouse_speed * (float)inputs->raw_mouse_input[0];
-		float pitch_delta = -mouse_speed * (float)inputs->raw_mouse_input[1];
-
-		// So for this, we need to figure out the "right" axis of the camera.
-		HMM_Vec3 cam_right_old = Camera_RotateV3(camera->ori, HMM_V3(1, 0, 0));
-		HMM_Quat pitch_rotator = HMM_QFromAxisAngle_RH(cam_right_old, pitch_delta);
-		camera->ori = HMM_MulQ(pitch_rotator, camera->ori);
-
-		HMM_Quat yaw_rotator = HMM_QFromAxisAngle_RH(HMM_V3(0, 0, 1), yaw_delta);
-		camera->ori = HMM_MulQ(yaw_rotator, camera->ori);
+		HMM_Quat pitch_rotator = HMM_QFromAxisAngle_RH(HMM_V3(1, 0, 0), camera->pitch - HMM_PI32 / 2.f);
+		HMM_Quat yaw_rotator = HMM_QFromAxisAngle_RH(HMM_V3(0, 0, 1), camera->yaw);
+		camera->ori = HMM_MulQ(yaw_rotator, pitch_rotator);
 		camera->ori = HMM_NormQ(camera->ori);
 	}
 
 	if (has_focus) {
-		// TODO: have a way to return `Camera_Forward`, `camera_right` and `camera_up` straight from the `world_from_view` matrix
-		if (Input_IsDown(inputs, Input_Key_Shift)) {
+		if (inputs.KeyIsDown(Input::Key::Shift)) {
 			movement_speed *= 3.f;
 		}
-		if (Input_IsDown(inputs, Input_Key_Control)) {
+		if (inputs.KeyIsDown(Input::Key::Control)) {
 			movement_speed *= 0.1f;
 		}
-		if (Input_IsDown(inputs, Input_Key_W)) {
-			camera->pos = camera->pos + Camera_Forward(camera) * movement_speed;
+		if (inputs.KeyIsDown(Input::Key::W)) {
+			camera->pos = camera->pos + camera->GetForward() * movement_speed;
 		}
-		if (Input_IsDown(inputs, Input_Key_S)) {
-			camera->pos = camera->pos + Camera_Forward(camera) * -movement_speed;
+		if (inputs.KeyIsDown(Input::Key::S)) {
+			camera->pos = camera->pos + camera->GetForward() * -movement_speed;
 		}
-		if (Input_IsDown(inputs, Input_Key_D)) {
-			camera->pos = camera->pos + Camera_Right(camera) * movement_speed;
+		if (inputs.KeyIsDown(Input::Key::D)) {
+			camera->pos = camera->pos + camera->GetRight() * movement_speed;
 		}
-		if (Input_IsDown(inputs, Input_Key_A)) {
-			camera->pos = camera->pos + Camera_Right(camera) * -movement_speed;
+		if (inputs.KeyIsDown(Input::Key::A)) {
+			camera->pos = camera->pos + camera->GetRight() * -movement_speed;
 		}
-		if (Input_IsDown(inputs, Input_Key_E)) {
+		if (inputs.KeyIsDown(Input::Key::E)) {
 			camera->pos = camera->pos + HMM_V3(0, 0, movement_speed);
 		}
-		if (Input_IsDown(inputs, Input_Key_Q)) {
+		if (inputs.KeyIsDown(Input::Key::Q)) {
 			camera->pos = camera->pos + HMM_V3(0, 0, -movement_speed);
 		}
 	}

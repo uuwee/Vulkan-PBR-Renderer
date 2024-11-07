@@ -4,24 +4,24 @@
 #define BLOOM_PASS_COUNT 6
 
 #define SHADER_ASSETS \
-	X(ShaderAsset_LightgridVoxelize,       "../src/demo_global_illumination_pbr/shaders/lightgrid_voxelize.glsl")\
-	X(ShaderAsset_LightgridSweep,          "../src/demo_global_illumination_pbr/shaders/lightgrid_sweep.glsl")\
-	X(ShaderAsset_GeometryPass,            "../src/demo_global_illumination_pbr/shaders/geometry_pass.glsl")\
-	X(ShaderAsset_LightingPass,            "../src/demo_global_illumination_pbr/shaders/lighting_pass.glsl")\
-	X(ShaderAsset_TAAResolve,              "../src/demo_global_illumination_pbr/shaders/taa_resolve.glsl")\
-	X(ShaderAsset_BloomDownsample,         "../src/demo_global_illumination_pbr/shaders/bloom_downsample.glsl")\
-	X(ShaderAsset_BloomUpsample,           "../src/demo_global_illumination_pbr/shaders/bloom_upsample.glsl")\
-	X(ShaderAsset_FinalPostProcess,        "../src/demo_global_illumination_pbr/shaders/final_post_process.glsl")\
-	X(ShaderAsset_SunDepthPass,            "../src/demo_global_illumination_pbr/shaders/sun_depth_pass.glsl")\
-	X(ShaderAsset_GenIrradianceMap,        "../src/demo_global_illumination_pbr/shaders/gen_irradiance_map.glsl")\
-	X(ShaderAsset_GenPrefilteredEnvMap,    "../src/demo_global_illumination_pbr/shaders/gen_prefiltered_env_map.glsl")\
-	X(ShaderAsset_GenBRDFIntegrationMap,   "../src/demo_global_illumination_pbr/shaders/gen_brdf_integration_map.glsl")
+	X(LightgridVoxelize,       "../src/demo_pbr_renderer/shaders/lightgrid_voxelize.glsl")\
+	X(LightgridSweep,          "../src/demo_pbr_renderer/shaders/lightgrid_sweep.glsl")\
+	X(GeometryPass,            "../src/demo_pbr_renderer/shaders/geometry_pass.glsl")\
+	X(LightingPass,            "../src/demo_pbr_renderer/shaders/lighting_pass.glsl")\
+	X(TAAResolve,              "../src/demo_pbr_renderer/shaders/taa_resolve.glsl")\
+	X(BloomDownsample,         "../src/demo_pbr_renderer/shaders/bloom_downsample.glsl")\
+	X(BloomUpsample,           "../src/demo_pbr_renderer/shaders/bloom_upsample.glsl")\
+	X(FinalPostProcess,        "../src/demo_pbr_renderer/shaders/final_post_process.glsl")\
+	X(SunDepthPass,            "../src/demo_pbr_renderer/shaders/sun_depth_pass.glsl")\
+	X(GenIrradianceMap,        "../src/demo_pbr_renderer/shaders/gen_irradiance_map.glsl")\
+	X(GenPrefilteredEnvMap,    "../src/demo_pbr_renderer/shaders/gen_prefiltered_env_map.glsl")\
+	X(GenBRDFIntegrationMap,   "../src/demo_pbr_renderer/shaders/gen_brdf_integration_map.glsl")
 
-enum ShaderAsset {
+enum class ShaderAsset {
 #define X(TAG, PATH) TAG,
 	SHADER_ASSETS
 #undef X
-	ShaderAsset_COUNT,
+	COUNT,
 };
 
 static const char* ShaderAssetPaths[] = {
@@ -35,28 +35,6 @@ struct Vertex {
 	HMM_Vec3 normal; // this could be packed better!
 	HMM_Vec3 tangent; // this could be packed better!
 	HMM_Vec2 tex_coord;
-};
-
-struct GenIrradianceMapCtx {
-	GPU_PipelineLayout* pipeline_layout;
-	uint32_t sampler_binding;
-	uint32_t tex_env_cube_binding;
-	uint32_t output_binding;
-	GPU_ComputePipeline* pipeline;
-};
-
-struct GenPrefilteredEnvMapCtx {
-	GPU_PipelineLayout* pipeline_layout;
-	uint32_t sampler_binding;
-	uint32_t tex_env_cube_binding;
-	uint32_t output_binding;
-	GPU_ComputePipeline* pipeline;
-};
-
-struct GenBRDFintegrationMapCtx {
-	GPU_PipelineLayout* pipeline_layout;
-	uint32_t output_binding;
-	GPU_ComputePipeline* pipeline;
 };
 
 struct MainPassLayout {
@@ -109,9 +87,9 @@ struct LightingPassLayout {
 typedef uint64_t StringHash;
 
 struct ShaderHotreloader {
-	bool shader_is_outdated[ShaderAsset_COUNT];
+	bool shader_is_outdated[(int)ShaderAsset::COUNT];
+	uint64_t file_modtimes[(int)ShaderAsset::COUNT];
 	int next_check_shader_idx; // Getting the file modtime is relatively slow so call it on one asset each frame.
-	uint64_t file_modtimes[ShaderAsset_COUNT];
 };
 
 struct RenderObjectPart {
@@ -230,8 +208,9 @@ struct Renderer {
 
 // -------------------------------------------------------------
 
-void InitRenderer(Renderer* renderer, uint32_t window_width, uint32_t window_height, GPU_Texture* tex_env_cube);
+void InitRenderer(Renderer* r, uint32_t window_width, uint32_t window_height);
+void DeinitRenderer(Renderer* r);
 
-void HotreloadShaders(Renderer* renderer);
+void HotreloadShaders(Renderer* r, GPU_Texture* tex_env_cube);
 
-void BuildRenderCommands(Renderer* renderer, GPU_Graph* graph, GPU_Texture* backbuffer, RenderObject* ro_world, RenderObject* ro_skybox, GPU_Texture* tex_env_cube, const Camera& camera, HMM_Vec2 sun_angle);
+void BuildRenderCommands(Renderer* rs, GPU_Graph* graph, GPU_Texture* backbuffer, RenderObject* world, RenderObject* skybox, const Camera& camera, HMM_Vec2 sun_angle);

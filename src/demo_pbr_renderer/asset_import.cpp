@@ -17,8 +17,6 @@
 
 extern DS_Arena* TEMP; // Arena for per-frame, temporary allocations
 
-static const HMM_Vec3 world_import_offset = {0, 25.f, 0}; // TODO: fix
-
 GPU_Texture* MakeTextureFromHDRIFile(STR_View filepath) {
 	int x, y, comp;
 	void* data = stbi_loadf(STR_ToC(TEMP, filepath), &x, &y, &comp, 4);
@@ -81,7 +79,7 @@ void UnloadMesh(RenderObject* mesh) {
 	*mesh = {};
 }
 
-RenderObject LoadMesh(Renderer* renderer, STR_View filepath) {
+RenderObject LoadMesh(Renderer* renderer, STR_View filepath, HMM_Vec3 offset) {
 	RenderObject render_object = {};
 	DS_ArrInit(&render_object.parts, DS_HEAP);
 	
@@ -125,7 +123,7 @@ RenderObject LoadMesh(Renderer* renderer, STR_View filepath) {
 			
 			// NOTE: flip Y and Z and texcoord y
 			Vertex v;
-			v.position  = {pos.x + world_import_offset.X, pos.z * -1.f + world_import_offset.Y, pos.y + world_import_offset.Z};
+			v.position  = {pos.x + offset.X, pos.z * -1.f + offset.Y, pos.y + offset.Z};
 			v.normal    = {normal.x,  normal.z  * -1.f, normal.y};
 			v.tangent   = {tangent.x, tangent.z * -1.f, tangent.y};
 			v.tex_coord = {tex_coord.x, 1.f - tex_coord.y};
