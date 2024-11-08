@@ -4,6 +4,8 @@ Physically based Vulkan renderer demo with dynamic global illumination. Not prod
 
 [Read more about this project in my article](https://eeromutka.github.io/projects/vulkan_renderer)
 
+License: Feel free to use for learning or non-commercial purposes.
+
 ## Building
 
 Prerequisites:
