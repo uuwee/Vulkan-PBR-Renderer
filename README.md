@@ -1,6 +1,6 @@
 # Vulkan PBR Renderer
 
-Physically based Vulkan renderer demo with dynamic global illumination.
+Physically based Vulkan renderer demo with dynamic global illumination. Not production-ready by any means, this is just a personal project which I put up for educational purposes.
 
 [Read more about this project in my article](https://eeromutka.github.io/projects/vulkan_renderer)
 
