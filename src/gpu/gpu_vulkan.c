@@ -335,7 +335,7 @@ static GPU_String GPU_ParseUntil(GPU_String* remaining, char until_character) {
 
 static bool GPU_ParseInt(GPU_String s, int64_t* out_value) {
 	int64_t value = 0;
-	int i = 0;
+	size_t i = 0;
 	for (; i < s.length; i++) {
 		int c = s.data[i];
 		int digit;
@@ -734,7 +734,7 @@ GPU_API GPU_DescriptorSet* GPU_InitDescriptorSet(GPU_DescriptorArena* descriptor
 GPU_API void GPU_DestroyDescriptorSet(GPU_DescriptorSet* set) {
 	if (set) {
 		DS_ASSERT(set->descriptor_arena == NULL);
-		DS_ASSERT(set->global_descriptor_pool != NULL);
+		DS_ASSERT(set->global_descriptor_pool);
 		DS_ArrDeinit(&set->bindings);
 		GPU_CheckVK(vkFreeDescriptorSets(GPU_STATE.device, set->global_descriptor_pool, 1, &set->vk_handle));
 	}
@@ -793,10 +793,10 @@ static void GPU_FinalizeDescriptorSetEx(GPU_DescriptorSet* set, bool check_for_c
 
 	DS_ArenaMark T = DS_ArenaGetMark(&GPU_STATE.temp_arena);
 
-	VkDescriptorPool descriptor_pool = NULL;
+	VkDescriptorPool descriptor_pool = 0;
 
 	if (set->descriptor_arena == NULL) {
-		if (GPU_STATE.global_descriptor_pool == NULL) {
+		if (!GPU_STATE.global_descriptor_pool) {
 			VkDescriptorPoolSize pool_sizes[4];
 			pool_sizes[0].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 			pool_sizes[0].descriptorCount = 256; // does this mean the maximum number of descriptors per one descriptor set, or maximum number of descriptors in total for all descriptor sets in this pool? It seems to be the latter.
@@ -1488,7 +1488,7 @@ static void GPU_RenderPassRebuildSwapchainFramebuffers(GPU_RenderPass* render_pa
 	framebuffer_info.layers = 1;
 
 	for (uint32_t i = 0; i < GPU_SWAPCHAIN_IMG_COUNT; i++) {
-		VkImageView attachments[2] = {GPU_STATE.swapchain.textures[i].img_view, NULL};
+		VkImageView attachments[2] = {GPU_STATE.swapchain.textures[i].img_view, 0};
 		if (render_pass->depth_stencil_target) {
 			attachments[1] = ((GPU_TextureImpl*)render_pass->depth_stencil_target)->img_view;
 		}

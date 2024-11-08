@@ -1,12 +1,11 @@
+#include "fire/fire_ds.h"
+#include "fire/fire_string.h"
 
-#include "src/fire/fire_ds.h"
-#include "src/fire/fire_string.h"
-
-#include "third_party/HandmadeMath.h"
+#include "HandmadeMath.h"
 
 #define CAMERA_VIEW_SPACE_IS_POSITIVE_Y_DOWN
-#include "src/utils/key_input/key_input.h"
+#include "utils/key_input/key_input.h"
 
-#include "src/utils/camera.h"
+#include "utils/camera.h"
 
-#include "src/gpu/gpu.h"
+#include "gpu/gpu.h"

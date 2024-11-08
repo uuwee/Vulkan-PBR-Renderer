@@ -929,7 +929,6 @@ STR_API bool STR_ParseFloat(STR_View s, double* out) {
 	char cstr[64] = {0};
 	memcpy(cstr, s.data, s.size);
 
-	char* end;
 	int success;
 	*out = STR_ToFloat_(cstr, &success);
 

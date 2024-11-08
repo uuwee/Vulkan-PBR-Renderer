@@ -1,10 +1,10 @@
 #include <stdio.h>
-#include "src/fire/fire_ds.h"
+#include "../fire/fire_ds.h"
 
 #define FIRE_OS_WINDOW_IMPLEMENTATION
-#include "src/fire/fire_os_window.h"
+#include "../fire/fire_os_window.h"
 
-#include "src/gpu/gpu.h"
+#include "../gpu/gpu.h"
 
 #define SHADER_PATH "../src/demo_triangle/triangle_shader.glsl"
 

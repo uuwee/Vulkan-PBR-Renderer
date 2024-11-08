@@ -1,4 +1,6 @@
 build/
+build_projects/obj/
+premake5.bat
 .vs/
 *.obj
 *.exe

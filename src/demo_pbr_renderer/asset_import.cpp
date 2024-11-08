@@ -3,14 +3,11 @@
 #include "os_utils.h"
 #include "asset_import.h"
 
-#define STB_IMAGE_STATIC
-#define STB_IMAGE_IMPLEMENTATION
-#include "third_party/stb_image.h"
-
-#include "third_party/ddspp.h"
+#include "stb_image.h"
+#include "ddspp.h"
 
 #define ASSIMP_DLL
-#define ASSIMP_API 
+#define ASSIMP_API
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <assimp/cimport.h>

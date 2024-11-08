@@ -343,10 +343,10 @@ static bool OS_AddKeyEvent(OS_Window* window, OS_Event* event, OS_EventKind kind
 	return generate_event;
 }
 
-static int64_t OS_WindowProc(HWND hWnd, uint32_t uMsg, uint64_t wParam, int64_t lParam) {
+static LRESULT __stdcall OS_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	OS_WindowProcUserData* passed = (OS_WindowProcUserData*)GetWindowLongPtrW(hWnd, GWLP_USERDATA);
 
-	int64_t result = 0;
+	LRESULT result = 0;
 	if (passed) {
 		OS_Event* event = passed->event;
 		OS_Window* window = passed->window;

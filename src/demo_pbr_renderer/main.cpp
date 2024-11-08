@@ -3,8 +3,8 @@
 #include "asset_import.h"
 
 #define FIRE_OS_WINDOW_IMPLEMENTATION
-#include "src/fire/fire_os_window.h"
-#include "src/utils/key_input/key_input_fire_os.h"
+#include "fire/fire_os_window.h"
+#include "utils/key_input/key_input_fire_os.h"
 
 DS_Arena* TEMP; // Arena for per-frame, temporary allocations
 
@@ -36,6 +36,8 @@ int main() {
 	InitRenderer(&renderer, window_width, window_height);
 	
 	RenderObject world = LoadMesh(&renderer, "../resources/SunTemple/SunTemple.fbx", {0.f, 25.f, 0.f}, 1.f);
+
+	// Loading bistro:
 	//RenderObject world = LoadMesh(&renderer, "C:/art_library/Bistro_v5_2/BistroInterior.fbx", {-7.f, -4.f, 0.f}, 4.2f);
 	//RenderObject world = LoadMesh(&renderer, "C:/art_library/Bistro_v5_2/BistroExterior.fbx", {-7.f, -4.f, 0.f}, 1.f);
 
@@ -71,7 +73,7 @@ int main() {
 		
 		float movement_speed = 0.05f;
 		float mouse_speed = 0.001f;
-		float FOV = 75.f;
+		float FOV = 60.f; // 75.f
 		float z_near = 0.02f;
 		float z_far = 10000.f;
 		UpdateCamera(&camera, inputs, movement_speed, mouse_speed, FOV, (float)window_width / (float)window_height, z_near, z_far);

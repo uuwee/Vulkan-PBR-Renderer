@@ -8,9 +8,9 @@ Physically based Vulkan renderer demo with dynamic global illumination.
 
 Prerequisites:
 - [Vulkan SDK](https://vulkan.lunarg.com/) (tested on 1.3.268)
-- [Visual Studio 2017 (or higher)](https://visualstudio.microsoft.com/)
 
-To generate project files for Visual Studio, run the `gen_projects.bat` script. You can then open the generated `build/demos.sln` file in Visual Studio.
+If you have Visual Studio 2022, you can open `build_projects/VulkanRenderer.sln` to build and run the demos.
+Otherwise, you can download [premake5](https://premake.github.io/download) and run `premake5.exe [target]` in the repository directory to generate the project files.
 
 ## Screenshots
 

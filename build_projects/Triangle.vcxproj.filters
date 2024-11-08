@@ -1,0 +1,337 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="src">
+      <UniqueIdentifier>{2DAB880B-99B4-887C-2230-9F7C8E38947C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\demo_triangle">
+      <UniqueIdentifier>{76EEDA49-E204-D9DF-2B7C-640197D1A967}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\fire">
+      <UniqueIdentifier>{62EB2FCF-4EB8-8ADA-77D1-788263FDBF68}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\gpu">
+      <UniqueIdentifier>{880430A9-F4E3-AE44-FDFB-391B695A15A6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\utils">
+      <UniqueIdentifier>{6DAA42B6-D914-F72C-2253-A8D28EFCD481}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\utils\key_input">
+      <UniqueIdentifier>{74491035-E0AA-ED42-6918-34F5D5782402}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="third_party">
+      <UniqueIdentifier>{0FB18DF1-7B66-06E7-045B-00BE700FFDEA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="third_party\assimp">
+      <UniqueIdentifier>{4B758F79-3759-50CF-A0B9-4A228CBC3A51}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="third_party\assimp\Compiler">
+      <UniqueIdentifier>{15D9D74C-81E6-0533-0ACD-011E76D9D1E9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="third_party\assimp\lib">
+      <UniqueIdentifier>{F1C1AAF3-DDBB-D345-C628-6A56B2C139B2}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\src\fire\fire_build.h">
+      <Filter>src\fire</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\fire\fire_ds.h">
+      <Filter>src\fire</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\fire\fire_os_clipboard.h">
+      <Filter>src\fire</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\fire\fire_os_sync.h">
+      <Filter>src\fire</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\fire\fire_os_timing.h">
+      <Filter>src\fire</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\fire\fire_os_window.h">
+      <Filter>src\fire</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\fire\fire_string.h">
+      <Filter>src\fire</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\gpu\gpu.h">
+      <Filter>src\gpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\utils\camera.h">
+      <Filter>src\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\utils\key_input\key_input.h">
+      <Filter>src\utils\key_input</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\utils\key_input\key_input_fire_os.h">
+      <Filter>src\utils\key_input</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\HandmadeMath.h">
+      <Filter>third_party</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\BaseImporter.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\Bitmap.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\BlobIOSystem.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\ByteSwapper.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\ColladaMetaData.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\Compiler\poppack1.h">
+      <Filter>third_party\assimp\Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\Compiler\pstdint.h">
+      <Filter>third_party\assimp\Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\Compiler\pushpack1.h">
+      <Filter>third_party\assimp\Compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\CreateAnimMesh.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\DefaultIOStream.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\DefaultIOSystem.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\DefaultLogger.hpp">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\Exceptional.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\Exporter.hpp">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\GenericProperty.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\GltfMaterial.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\Hash.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\IOStreamBuffer.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\LineSplitter.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\LogAux.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\MathFunctions.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\MemoryIOWrapper.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\ObjMaterial.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\ParsingUtils.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\Profiler.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\RemoveComments.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\SGSpatialSort.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\SceneCombiner.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\SkeletonMeshBuilder.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\SmallVector.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\SmoothingGroups.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\SpatialSort.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\StandardShapes.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\StreamReader.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\StreamWriter.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\StringComparison.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\StringUtils.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\Subdivision.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\TinyFormatter.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\Vertex.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\XMLTools.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\XmlParser.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\ZipArchiveIOSystem.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\aabb.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\ai_assert.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\anim.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\camera.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\cexport.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\cfileio.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\cimport.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\color4.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\commonMetaData.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\config.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\defs.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\fast_atof.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\importerdesc.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\light.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\material.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\matrix3x3.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\matrix4x4.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\mesh.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\metadata.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\pbrmaterial.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\postprocess.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\qnan.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\quaternion.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\scene.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\texture.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\types.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\vector2.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\vector3.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\assimp\version.h">
+      <Filter>third_party\assimp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\cgltf.h">
+      <Filter>third_party</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\ddspp.h">
+      <Filter>third_party</Filter>
+    </ClInclude>
+    <ClInclude Include="..\third_party\stb_image.h">
+      <Filter>third_party</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\demo_triangle\triangle.cpp">
+      <Filter>src\demo_triangle</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\gpu\gpu_vulkan.c">
+      <Filter>src\gpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\third_party\stb_image.c">
+      <Filter>third_party</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\src\demo_triangle\triangle_shader.glsl">
+      <Filter>src\demo_triangle</Filter>
+    </None>
+    <None Include="..\src\fire\LICENSE">
+      <Filter>src\fire</Filter>
+    </None>
+    <None Include="..\src\fire\README.md">
+      <Filter>src\fire</Filter>
+    </None>
+    <None Include="..\src\fire\fire.natstepfilter">
+      <Filter>src\fire</Filter>
+    </None>
+    <None Include="..\third_party\assimp\config.h.in">
+      <Filter>third_party\assimp</Filter>
+    </None>
+    <None Include="..\third_party\assimp\lib\assimp-vc143-mt.dll">
+      <Filter>third_party\assimp\lib</Filter>
+    </None>
+    <None Include="..\third_party\assimp\lib\assimp-vc143-mt.lib">
+      <Filter>third_party\assimp\lib</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="..\src\fire\fire.natvis">
+      <Filter>src\fire</Filter>
+    </Natvis>
+  </ItemGroup>
+</Project>
