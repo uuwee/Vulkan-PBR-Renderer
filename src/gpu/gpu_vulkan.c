@@ -799,13 +799,13 @@ static void GPU_FinalizeDescriptorSetEx(GPU_DescriptorSet* set, bool check_for_c
 		if (!GPU_STATE.global_descriptor_pool) {
 			VkDescriptorPoolSize pool_sizes[4];
 			pool_sizes[0].type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-			pool_sizes[0].descriptorCount = 256; // does this mean the maximum number of descriptors per one descriptor set, or maximum number of descriptors in total for all descriptor sets in this pool? It seems to be the latter.
+			pool_sizes[0].descriptorCount = 512; // does this mean the maximum number of descriptors per one descriptor set, or maximum number of descriptors in total for all descriptor sets in this pool? It seems to be the latter.
 			pool_sizes[1].type = VK_DESCRIPTOR_TYPE_SAMPLER;
-			pool_sizes[1].descriptorCount = 256;
+			pool_sizes[1].descriptorCount = 512;
 			pool_sizes[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-			pool_sizes[2].descriptorCount = 256;
+			pool_sizes[2].descriptorCount = 512;
 			pool_sizes[3].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			pool_sizes[3].descriptorCount = 256;
+			pool_sizes[3].descriptorCount = 512;
 
 			VkDescriptorPoolCreateInfo pool_info = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
 			pool_info.poolSizeCount = DS_ArrayCount(pool_sizes);
@@ -1156,9 +1156,11 @@ GPU_API void GPU_Deinit() {
 	GPU_DestroySwapchain(&GPU_STATE.swapchain);
 	vkDestroySurfaceKHR(GPU_STATE.instance, GPU_STATE.surface, NULL);
 
+#ifdef GPU_ENABLE_VALIDATION
 	// Remove the debug report callback
 	PFN_vkDestroyDebugReportCallbackEXT vkDestroyDebugReportCallbackEXT = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(GPU_STATE.instance, "vkDestroyDebugReportCallbackEXT");
 	vkDestroyDebugReportCallbackEXT(GPU_STATE.instance, GPU_STATE.debug_callback, NULL);
+#endif
 
 	// TODO: make sure there aren't any unfreed GPU resources.
 
@@ -2392,7 +2394,9 @@ GPU_API void GPU_DestroyGraph(GPU_Graph* graph) {
 
 	vkDestroyFence(GPU_STATE.device, graph->gpu_finished_working_fence, NULL);
 	vkFreeCommandBuffers(GPU_STATE.device, GPU_STATE.cmd_pool, 1, &graph->cmd_buffer);
-	DS_ArenaDeinit(&graph->arena);
+	
+	DS_Arena graph_arena = graph->arena; // make a local copy to avoid reading from deallocated memory in DS_ArenaDeinit since the graph is allocated from its own arena
+	DS_ArenaDeinit(&graph_arena);
 }
 
 GPU_API GPU_Graph* GPU_MakeGraph(void) {

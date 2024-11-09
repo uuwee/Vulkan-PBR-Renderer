@@ -26,10 +26,10 @@ int main() {
 
 	const uint32_t window_width = 1920;
 	const uint32_t window_height = 1080;
+	bool fullscreen = false;
 
 	OS_Window window = OS_CreateWindow(window_width, window_height, "PBR Renderer");
-	OS_SetWindowFullscreen(&window, true);
-
+	
 	GPU_Init(window.handle);
 
 	Renderer renderer = {};
@@ -68,12 +68,16 @@ int main() {
 		if (inputs.KeyIsDown(Input::Key::_8)) render_params.sun_angle.Y -= 0.5f;
 		if (inputs.KeyIsDown(Input::Key::_7)) render_params.sun_angle.Y += 0.5f;
 		if (inputs.KeyWentDown(Input::Key::G)) render_params.visualize_lightgrid = !render_params.visualize_lightgrid;
+		if (inputs.KeyWentDown(Input::Key::F)) {
+			fullscreen = !fullscreen;
+			OS_SetWindowFullscreen(&window, fullscreen);
+		}
 
 		HotreloadShaders(&renderer, tex_env_cube);
 		
 		float movement_speed = 0.05f;
 		float mouse_speed = 0.001f;
-		float FOV = 60.f; // 75.f
+		float FOV = 75.f;
 		float z_near = 0.02f;
 		float z_far = 10000.f;
 		UpdateCamera(&camera, inputs, movement_speed, mouse_speed, FOV, (float)window_width / (float)window_height, z_near, z_far);
