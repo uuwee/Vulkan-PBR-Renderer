@@ -2,7 +2,10 @@
 #include "gpu.h"
 
 #include <stdio.h>
-#include <assert.h>
+
+#ifndef GPU_ASSERT
+#define GPU_ASSERT(x) if (!(x)) __debugbreak()
+#endif
 
 // -- Windows-specific --------------------------------------------------------
 
@@ -16,7 +19,7 @@
 #include <glslang/Include/glslang_c_interface.h>
 #include <glslang/Public/resource_limits_c.h>
 
-#define GPU_TODO() assert(0)
+#define GPU_TODO() GPU_ASSERT(0)
 
 #ifndef GPU_REVERSE_DEPTH
 #define GPU_REVERSE_DEPTH false
@@ -25,7 +28,7 @@
 #define GPU_SWAPCHAIN_IMG_COUNT 3
 
 // Allocate a slot from a bucket array with a freelist
-#define NEW_SLOT(OUT_SLOT, BUCKET_ARRAY, FIRST_FREE_SLOT, NEXT) \
+#define GPU_NEW_SLOT(OUT_SLOT, BUCKET_ARRAY, FIRST_FREE_SLOT, NEXT) \
 	if (*FIRST_FREE_SLOT) { \
 		*OUT_SLOT = *FIRST_FREE_SLOT; \
 		*FIRST_FREE_SLOT = (*FIRST_FREE_SLOT)->NEXT; \
@@ -34,7 +37,7 @@
 	}
 
 // Free a slot from a bucket array with a freelist
-#define FREE_SLOT(SLOT, FIRST_FREE_SLOT, NEXT) \
+#define GPU_FREE_SLOT(SLOT, FIRST_FREE_SLOT, NEXT) \
 	SLOT->NEXT = *FIRST_FREE_SLOT; \
 	*FIRST_FREE_SLOT = SLOT;
 
@@ -384,7 +387,7 @@ static void GPU_PrintI(GPU_StrBuilder* builder, int64_t value) {
 static void GPU_CheckVK(VkResult err) {
 	if (err != 0) {
 		fprintf(stderr, "GPU-ERROR: Vulkan API call returned VkResult: %d\n", err);
-		assert(false);
+		GPU_ASSERT(false);
 	}
 }
 
@@ -396,7 +399,7 @@ VKAPI_ATTR static VkBool32 GPU_DebugReport(VkDebugReportFlagsEXT flags, VkDebugR
 	}
 	if (flags & VK_DEBUG_REPORT_ERROR_BIT_EXT) {
 		fprintf(stderr, "GPU-ERROR: %s\n", pMessage);
-		assert(false);
+		GPU_ASSERT(false);
 	}
 	return VK_FALSE;
 }
@@ -439,13 +442,13 @@ static void GPU_IndexAllocatorRemove(GPU_IndexAllocator* index_allocator, uint32
 
 inline GPU_Entity* GPU_NewEntity() {
 	GPU_Entity* entity;
-	NEW_SLOT(&entity, &GPU_STATE.entities, &GPU_STATE.first_free_entity, freelist_next);
+	GPU_NEW_SLOT(&entity, &GPU_STATE.entities, &GPU_STATE.first_free_entity, freelist_next);
 	memset(entity, 0, sizeof(*entity));
 	return entity;
 }
 
 inline void GPU_FreeEntity(GPU_Entity* entity) {
-	FREE_SLOT(entity, &GPU_STATE.first_free_entity, freelist_next);
+	GPU_FREE_SLOT(entity, &GPU_STATE.first_free_entity, freelist_next);
 }
 
 static void GPU_DestroySemaphore(VkSemaphore semaphore) {
@@ -527,7 +530,7 @@ static void GPU_MaybeRecreateSwapchain(void) {
 	VkResult surface_caps_result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(GPU_STATE.physical_device, GPU_STATE.surface, &caps);
 
 	// After closing a window, GPU_STATE_GraphWait() may still be called and surface_caps_result may then return VK_ERROR_SURFACE_LOST_KHR.
-	assert(surface_caps_result == VK_SUCCESS || surface_caps_result == VK_ERROR_SURFACE_LOST_KHR);
+	GPU_ASSERT(surface_caps_result == VK_SUCCESS || surface_caps_result == VK_ERROR_SURFACE_LOST_KHR);
 
 	uint32_t width = caps.currentExtent.width, height = caps.currentExtent.height;
 
@@ -672,7 +675,7 @@ GPU_API void GPU_DestroyPipelineLayout(GPU_PipelineLayout* layout) {
 GPU_API void GPU_FinalizePipelineLayout(GPU_PipelineLayout* layout) {
 	DS_ProfEnter();
 
-	assert(layout->descriptor_set_layout == 0);
+	GPU_ASSERT(layout->descriptor_set_layout == 0);
 	DS_ArenaMark T = DS_ArenaGetMark(&GPU_STATE.temp_arena);
 
 	DS_DynArray(VkDescriptorSetLayoutBinding) vk_bindings = { &GPU_STATE.temp_arena };
@@ -736,8 +739,8 @@ GPU_API GPU_DescriptorSet* GPU_InitDescriptorSet(GPU_DescriptorArena* descriptor
 
 GPU_API void GPU_DestroyDescriptorSet(GPU_DescriptorSet* set) {
 	if (set) {
-		assert(set->descriptor_arena == NULL);
-		assert(set->global_descriptor_pool);
+		GPU_ASSERT(set->descriptor_arena == NULL);
+		GPU_ASSERT(set->global_descriptor_pool);
 		DS_ArrDeinit(&set->bindings);
 		GPU_CheckVK(vkFreeDescriptorSets(GPU_STATE.device, set->global_descriptor_pool, 1, &set->vk_handle));
 	}
@@ -751,11 +754,11 @@ static void GPU_SetBinding(GPU_DescriptorSet* set, uint32_t binding, void* value
 	}
 
 	GPU_BindingInfo binding_info = DS_ArrGet(set->pipeline_layout->bindings, binding);
-	assert(binding_info.kind == kind);
+	GPU_ASSERT(binding_info.kind == kind);
 	if (kind == GPU_ResourceKind_StorageImage) {
 		GPU_TextureImpl* texture = (GPU_TextureImpl*)value;
-		assert(texture->base.flags & GPU_TextureFlag_StorageImage);
-		// assert(texture->base.format == binding_info.image_format); // Passed format must match the expected format
+		GPU_ASSERT(texture->base.flags & GPU_TextureFlag_StorageImage);
+		// GPU_ASSERT(texture->base.format == binding_info.image_format); // Passed format must match the expected format
 	}
 
 	if (binding >= (uint32_t)set->bindings.count) {
@@ -776,7 +779,7 @@ GPU_API void GPU_SetStorageImageBinding(GPU_DescriptorSet* set, uint32_t binding
 }
 
 void GPU_SetTextureMipBinding(GPU_DescriptorSet* set, uint32_t binding, GPU_Texture* value, uint32_t mip_level) {
-	assert(value->flags & GPU_TextureFlag_PerMipBinding);
+	GPU_ASSERT(value->flags & GPU_TextureFlag_PerMipBinding);
 	GPU_SetBinding(set, binding, value, GPU_ResourceKind_Texture, mip_level);
 }
 
@@ -792,7 +795,7 @@ static GPU_Format GPU_GetIntegerFormat(uint32_t size) {
 
 static void GPU_FinalizeDescriptorSetEx(GPU_DescriptorSet* set, bool check_for_completeness) {
 	DS_ProfEnter();
-	assert(set->vk_handle == 0); // Did you already call finalize?
+	GPU_ASSERT(set->vk_handle == 0); // Did you already call finalize?
 
 	DS_ArenaMark T = DS_ArenaGetMark(&GPU_STATE.temp_arena);
 
@@ -835,7 +838,7 @@ static void GPU_FinalizeDescriptorSetEx(GPU_DescriptorSet* set, bool check_for_c
 		GPU_TODO(); // Allocate a new descriptor pool
 	}
 
-	if (check_for_completeness) assert(set->bindings.count == set->pipeline_layout->bindings.count); // Did you remember to call GPU_Set[*]Binding on all of the binding slots?
+	if (check_for_completeness) GPU_ASSERT(set->bindings.count == set->pipeline_layout->bindings.count); // Did you remember to call GPU_Set[*]Binding on all of the binding slots?
 
 	DS_DynArray(VkWriteDescriptorSet) writes = { &GPU_STATE.temp_arena };
 	DS_ArrReserve(&writes, set->bindings.count);
@@ -843,7 +846,7 @@ static void GPU_FinalizeDescriptorSetEx(GPU_DescriptorSet* set, bool check_for_c
 	for (uint32_t i = 0; i < (uint32_t)set->bindings.count; i++) {
 		GPU_BindingInfo binding_info = DS_ArrGet(set->pipeline_layout->bindings, i);
 		GPU_BindingValue binding_value = DS_ArrGet(set->bindings, i);
-		if (check_for_completeness) assert(binding_value.ptr != NULL); // Did you remember to call GPU_Set[*]Binding on this binding?
+		if (check_for_completeness) GPU_ASSERT(binding_value.ptr != NULL); // Did you remember to call GPU_Set[*]Binding on this binding?
 
 		VkWriteDescriptorSet write = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
 		write.dstSet = set->vk_handle;
@@ -879,7 +882,7 @@ static void GPU_FinalizeDescriptorSetEx(GPU_DescriptorSet* set, bool check_for_c
 
 		case GPU_ResourceKind_Buffer: {
 			GPU_Buffer* buffer = (GPU_Buffer*)binding_value.ptr;
-			assert((buffer->flags & GPU_BufferFlag_StorageBuffer) && (buffer->flags & GPU_BufferFlag_GPU));
+			GPU_ASSERT((buffer->flags & GPU_BufferFlag_StorageBuffer) && (buffer->flags & GPU_BufferFlag_GPU));
 
 			VkDescriptorBufferInfo* info = DS_New(VkDescriptorBufferInfo, &GPU_STATE.temp_arena);
 			info->buffer = ((GPU_BufferImpl*)buffer)->vk_handle;
@@ -891,15 +894,15 @@ static void GPU_FinalizeDescriptorSetEx(GPU_DescriptorSet* set, bool check_for_c
 
 		case GPU_ResourceKind_StorageImage: {
 			GPU_TextureImpl* texture = (GPU_TextureImpl*)binding_value.ptr;
-			assert(texture->base.flags & GPU_TextureFlag_StorageImage);
+			GPU_ASSERT(texture->base.flags & GPU_TextureFlag_StorageImage);
 
 			VkImageView img_view = texture->mip_level_img_views[binding_value.mip_level];
 
 			if (binding_info.image_format != texture->base.format) {
 				// use atomics image view
 				GPU_Format integer_format = GPU_GetIntegerFormat(GPU_GetFormatInfo(texture->base.format).block_size);
-				assert(binding_info.image_format == integer_format);
-				assert(texture->atomics_img_view);
+				GPU_ASSERT(binding_info.image_format == integer_format);
+				GPU_ASSERT(texture->atomics_img_view);
 				if (binding_value.mip_level != 0) GPU_TODO();
 
 				img_view = texture->atomics_img_view;
@@ -981,7 +984,7 @@ GPU_API void GPU_Init(GPU_WindowHandle window) {
 #ifdef GPU_ENABLE_VALIDATION
 		// Get the function pointer (required for any extensions)
 		PFN_vkCreateDebugReportCallbackEXT vkCreateDebugReportCallbackEXT = (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(GPU_STATE.instance, "vkCreateDebugReportCallbackEXT");
-		assert(vkCreateDebugReportCallbackEXT != NULL);
+		GPU_ASSERT(vkCreateDebugReportCallbackEXT != NULL);
 		// Setup the debug report callback
 		VkDebugReportCallbackCreateInfoEXT debug_report_ci = { VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT };
 		debug_report_ci.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
@@ -994,7 +997,7 @@ GPU_API void GPU_Init(GPU_WindowHandle window) {
 	{ // Select GPU and create physical device
 		uint32_t gpu_count;
 		GPU_CheckVK(vkEnumeratePhysicalDevices(GPU_STATE.instance, &gpu_count, NULL));
-		assert(gpu_count > 0);
+		GPU_ASSERT(gpu_count > 0);
 
 		VkPhysicalDevice* gpus = (VkPhysicalDevice*)DS_ArenaPush(&GPU_STATE.temp_arena, gpu_count * sizeof(VkPhysicalDevice));
 		GPU_CheckVK(vkEnumeratePhysicalDevices(GPU_STATE.instance, &gpu_count, gpus));
@@ -1030,7 +1033,7 @@ GPU_API void GPU_Init(GPU_WindowHandle window) {
 				break;
 			}
 		}
-		assert(queue_family != -1);
+		GPU_ASSERT(queue_family != -1);
 		GPU_STATE.queue_family = (uint32_t)queue_family;
 	}
 
@@ -1207,8 +1210,8 @@ GPU_API void GPU_DestroyBuffer(GPU_Buffer* buffer) {
 
 GPU_API GPU_Buffer* GPU_MakeBuffer(uint32_t size, GPU_BufferFlags flags, const void* data) {
 	DS_ProfEnter();
-	assert((flags & GPU_BufferFlag_CPU) || (flags & GPU_BufferFlag_GPU)); // The buffer must be accessible from either the CPU or the GPU, or both.
-	assert(size > 0);
+	GPU_ASSERT((flags & GPU_BufferFlag_CPU) || (flags & GPU_BufferFlag_GPU)); // The buffer must be accessible from either the CPU or the GPU, or both.
+	GPU_ASSERT(size > 0);
 
 	GPU_BufferImpl* buffer_impl = &GPU_NewEntity()->buffer;
 
@@ -1232,7 +1235,7 @@ GPU_API GPU_Buffer* GPU_MakeBuffer(uint32_t size, GPU_BufferFlags flags, const v
 	}
 
 	uint32_t memory_type_idx;
-	assert(FindVKMemoryTypeIndex(mem_requirements, required_properties, &memory_type_idx));
+	GPU_ASSERT(FindVKMemoryTypeIndex(mem_requirements, required_properties, &memory_type_idx));
 
 	VkMemoryAllocateInfo alloc_info = {0};
 	alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -1295,7 +1298,7 @@ static VkImageView GPU_MakeImageView(VkFormat vk_format, VkImageUsageFlags usage
 		// the depth part.
 	}
 
-	assert(!(texture_impl->base.flags & GPU_TextureFlag_Cubemap) || texture_impl->base.depth == 1);
+	GPU_ASSERT(!(texture_impl->base.flags & GPU_TextureFlag_Cubemap) || texture_impl->base.depth == 1);
 	VkImageViewType view_type = texture_impl->base.flags & GPU_TextureFlag_Cubemap ? VK_IMAGE_VIEW_TYPE_CUBE :
 		texture_impl->base.depth > 1 ? VK_IMAGE_VIEW_TYPE_3D : VK_IMAGE_VIEW_TYPE_2D;
 
@@ -1333,7 +1336,7 @@ GPU_API void GPU_DestroyTexture(GPU_Texture* texture) {
 
 GPU_API GPU_Texture* GPU_MakeTexture(GPU_Format format, uint32_t width, uint32_t height, uint32_t depth, GPU_TextureFlags flags, const void* data) {
 	DS_ProfEnter();
-	assert(width > 0 && height > 0 && depth > 0);
+	GPU_ASSERT(width > 0 && height > 0 && depth > 0);
 
 	GPU_TextureImpl* texture_impl = &GPU_NewEntity()->texture;
 	texture_impl->idle_layout_ = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -1396,7 +1399,7 @@ GPU_API GPU_Texture* GPU_MakeTexture(GPU_Format format, uint32_t width, uint32_t
 	vkGetImageMemoryRequirements(GPU_STATE.device, texture_impl->vk_handle, &mem_requirements);
 
 	uint32_t memory_type_idx;
-	assert(FindVKMemoryTypeIndex(mem_requirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &memory_type_idx));
+	GPU_ASSERT(FindVKMemoryTypeIndex(mem_requirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &memory_type_idx));
 
 	VkMemoryAllocateInfo alloc_info = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
 	alloc_info.allocationSize = mem_requirements.size;
@@ -1484,7 +1487,7 @@ static void GPU_RenderPassRebuildSwapchainFramebuffers(GPU_RenderPass* render_pa
 		vkDestroyFramebuffer(GPU_STATE.device, render_pass->framebuffers[i], NULL); // NULL frame-buffers are ignored by vulkan
 	}
 
-	assert(render_pass->color_targets_count == 1);
+	GPU_ASSERT(render_pass->color_targets_count == 1);
 
 	VkFramebufferCreateInfo framebuffer_info = { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
 	framebuffer_info.renderPass = render_pass->vk_handle;
@@ -1513,7 +1516,7 @@ GPU_API GPU_RenderPass* GPU_MakeRenderPass(const GPU_RenderPassDesc* desc) {
 	if (desc->color_targets_count > 0 && desc->color_targets != GPU_SWAPCHAIN_COLOR_TARGET) {
 		msaa_samples = GPU_GetTextureMSAASampleCount(desc->color_targets[0].texture->flags);
 	}
-	assert(desc->msaa_color_resolve_targets == NULL || msaa_samples.count > 1);
+	GPU_ASSERT(desc->msaa_color_resolve_targets == NULL || msaa_samples.count > 1);
 
 	render_pass->msaa_samples = msaa_samples.vk_count;
 	render_pass->color_targets_count = desc->color_targets_count;
@@ -1547,8 +1550,8 @@ GPU_API GPU_RenderPass* GPU_MakeRenderPass(const GPU_RenderPassDesc* desc) {
 			GPU_TextureView color_target = desc->color_targets[i];
 			attachment.format = GPU_GetVkFormat(color_target.texture->format);
 
-			// assert(color_target.texture->flags & GPU_TextureFlag_RenderTarget);
-			// assert(GPU_GetTextureMSAASampleCount(color_target.texture->flags).count == msaa_samples.count); // All attachments must have the same sample count
+			// GPU_ASSERT(color_target.texture->flags & GPU_TextureFlag_RenderTarget);
+			// GPU_ASSERT(GPU_GetTextureMSAASampleCount(color_target.texture->flags).count == msaa_samples.count); // All attachments must have the same sample count
 
 			GPU_TextureImpl* color_target_tex = (GPU_TextureImpl*)color_target.texture;
 			render_pass->color_targets[i] = color_target;
@@ -1603,7 +1606,7 @@ GPU_API GPU_RenderPass* GPU_MakeRenderPass(const GPU_RenderPassDesc* desc) {
 		attachment_img_views[attachments_count] = ((GPU_TextureImpl*)desc->depth_stencil_target)->img_view;
 		attachments_count++;
 
-		assert(GPU_GetTextureMSAASampleCount(desc->depth_stencil_target->flags).count == msaa_samples.count); // All attachments must have the same sample count
+		GPU_ASSERT(GPU_GetTextureMSAASampleCount(desc->depth_stencil_target->flags).count == msaa_samples.count); // All attachments must have the same sample count
 	}
 
 	VkSubpassDescription subpass_info = {0};
@@ -1627,7 +1630,7 @@ GPU_API GPU_RenderPass* GPU_MakeRenderPass(const GPU_RenderPassDesc* desc) {
 
 		GPU_RenderPassRebuildSwapchainFramebuffers(render_pass);
 		render_pass->depends_on_swapchain_gen_id = GPU_STATE.swapchain.gen_id;
-		assert(render_pass->depends_on_swapchain_gen_id > 0);
+		GPU_ASSERT(render_pass->depends_on_swapchain_gen_id > 0);
 	}
 	else {
 		render_pass->width  = desc->width;
@@ -1692,17 +1695,17 @@ static GPU_GraphicsPipeline* GPU_MakePipelineEx(const GPU_GraphicsPipelineDesc* 
 	VkShaderModule vs = 0, fs = 0;
 
 	if (vs_desc.spirv.length == 0) {
-		assert(vs_desc.glsl.length > 0);
+		GPU_ASSERT(vs_desc.glsl.length > 0);
 		vs_desc.spirv = GPU_SPIRVFromGLSL(&GPU_STATE.temp_arena, GPU_ShaderStage_Vertex, desc->layout, &vs_desc, NULL);
 		// OS_WriteEntireFile(OS_CWD, STR_("C:/temp/test.spv"), vs_desc.spirv); //test
 	}
 	if (fs_desc.spirv.length == 0) {
-		assert(fs_desc.glsl.length > 0);
+		GPU_ASSERT(fs_desc.glsl.length > 0);
 		fs_desc.spirv = GPU_SPIRVFromGLSL(&GPU_STATE.temp_arena, GPU_ShaderStage_Fragment, desc->layout, &fs_desc, NULL);
 	}
 
 	{
-		assert(vs_desc.spirv.length > 0);
+		GPU_ASSERT(vs_desc.spirv.length > 0);
 		GPU_VkCreateShaderModule(vs_desc.spirv, &vs);
 		VkPipelineShaderStageCreateInfo vs_info = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
 		vs_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
@@ -1733,7 +1736,7 @@ static GPU_GraphicsPipeline* GPU_MakePipelineEx(const GPU_GraphicsPipelineDesc* 
 	info.pVertexInputState = &vertex_input_state_info;
 
 	VkVertexInputAttributeDescription input_attributes[16];
-	assert(desc->vertex_input_formats_count <= 16);
+	GPU_ASSERT(desc->vertex_input_formats_count <= 16);
 
 	VkVertexInputBindingDescription input_streams[16];
 	uint32_t input_streams_count = 0;
@@ -1751,7 +1754,7 @@ static GPU_GraphicsPipeline* GPU_MakePipelineEx(const GPU_GraphicsPipelineDesc* 
 			input_attributes[i] = attribute;
 
 			GPU_FormatInfo format_info = GPU_GetFormatInfo(format);
-			assert(format_info.vertex_input);
+			GPU_ASSERT(format_info.vertex_input);
 			offset += format_info.block_size;
 		}
 
@@ -1898,11 +1901,11 @@ GPU_API GPU_ComputePipeline* GPU_MakeComputePipeline(GPU_PipelineLayout* layout,
 	VkShaderModule compute_shader;
 	GPU_ShaderDesc cs_desc = *cs;
 	if (cs_desc.spirv.length == 0) {
-		assert(cs_desc.glsl.length > 0);
+		GPU_ASSERT(cs_desc.glsl.length > 0);
 		cs_desc.spirv = GPU_SPIRVFromGLSL(&GPU_STATE.temp_arena, GPU_ShaderStage_Compute, layout, &cs_desc, NULL);
 	}
 
-	assert(cs_desc.spirv.length > 0);
+	GPU_ASSERT(cs_desc.spirv.length > 0);
 	GPU_VkCreateShaderModule(cs_desc.spirv, &compute_shader);
 	
 	DS_ArrInit(&pipeline->accesses, DS_HEAP);
@@ -2014,7 +2017,7 @@ GPU_API GPU_String GPU_SPIRVFromGLSL(DS_Arena* arena, GPU_ShaderStage stage, GPU
 		} break;
 		case GPU_ResourceKind_StorageImage: {
 			GPU_FormatInfo format_info = GPU_GetFormatInfo(binding_info.image_format);
-			assert(format_info.glsl != NULL);
+			GPU_ASSERT(format_info.glsl != NULL);
 			GPU_PrintL(&glsl, "#define GPU_BINDING_");
 			GPU_PrintC(&glsl, binding_name);
 			GPU_PrintL(&glsl, " layout(set=0, binding=");
@@ -2130,7 +2133,7 @@ GPU_API GPU_String GPU_SPIRVFromGLSL(DS_Arena* arena, GPU_ShaderStage stage, GPU
 				GPU_String line_number_str = GPU_ParseUntil(&line_remaining, ':');
 
 				int64_t line_idx;
-				assert(GPU_ParseInt(line_number_str, &line_idx));
+				GPU_ASSERT(GPU_ParseInt(line_number_str, &line_idx));
 
 				// Skip : and spaces
 				for (;;) {
@@ -2147,7 +2150,7 @@ GPU_API GPU_String GPU_SPIRVFromGLSL(DS_Arena* arena, GPU_ShaderStage stage, GPU
 			}
 		}
 
-		if (out_errors == NULL) assert(false);
+		if (out_errors == NULL) GPU_ASSERT(false);
 		out_errors->data = errors.data;
 		out_errors->length = (uint32_t)errors.count;
 	}
@@ -2194,13 +2197,13 @@ static void GPU_GetVkStageAccessLayout(const GPU_ResourceAccess* access, VkPipel
 		*out_img_layout = VK_IMAGE_LAYOUT_GENERAL;
 	}
 	else if (access->access_flags & GPU_ResourceAccessFlag_TransferRead) {
-		assert(!(access->access_flags & GPU_ResourceAccessFlag_TransferWrite));
+		GPU_ASSERT(!(access->access_flags & GPU_ResourceAccessFlag_TransferWrite));
 		*out_stage_flags |= VK_PIPELINE_STAGE_TRANSFER_BIT;
 		*out_access_flags |= VK_ACCESS_TRANSFER_READ_BIT;
 		*out_img_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 	}
 	else if (access->access_flags & GPU_ResourceAccessFlag_TransferWrite) {
-		assert(!(access->access_flags & GPU_ResourceAccessFlag_TransferRead));
+		GPU_ASSERT(!(access->access_flags & GPU_ResourceAccessFlag_TransferRead));
 		*out_stage_flags |= VK_PIPELINE_STAGE_TRANSFER_BIT;
 		*out_access_flags |= VK_ACCESS_TRANSFER_WRITE_BIT;
 		*out_img_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
@@ -2216,7 +2219,7 @@ static void GPU_GetVkStageAccessLayout(const GPU_ResourceAccess* access, VkPipel
 		}
 	}
 	else {
-		assert(false);
+		GPU_ASSERT(false);
 	}
 	DS_ProfExit();
 }
@@ -2425,7 +2428,7 @@ GPU_API GPU_Graph* GPU_MakeGraph(void) {
 }
 
 GPU_API void GPU_MakeSwapchainGraphs(uint32_t count, GPU_Graph** out_graphs) {
-	assert(count == 2); // I don't think there's any reason not to have 2 frames in-flight
+	GPU_ASSERT(count == 2); // I don't think there's any reason not to have 2 frames in-flight
 
 	for (uint32_t i = 0; i < count; i++) {
 		GPU_Graph* graph = GPU_MakeGraph();
@@ -2443,7 +2446,7 @@ GPU_API void GPU_MakeSwapchainGraphs(uint32_t count, GPU_Graph** out_graphs) {
 }
 
 GPU_API GPU_Texture* GPU_GetBackbuffer(GPU_Graph* graph) {
-	assert(graph->frame.img_index != GPU_NOT_A_SWAPCHAIN_GRAPH);
+	GPU_ASSERT(graph->frame.img_index != GPU_NOT_A_SWAPCHAIN_GRAPH);
 	return graph->frame.backbuffer;
 }
 
@@ -2521,8 +2524,8 @@ GPU_API void GPU_GraphSubmit(GPU_Graph* graph) {
 	GPU_TextureImpl* backbuffer = NULL;
 	if (graph->frame.img_index != GPU_NOT_A_SWAPCHAIN_GRAPH) {
 		// You may only call GPU_GraphSubmit on a swapchain graph if there exists a valid backbuffer. You can check for this by calling GPU_GetBackbuffer.
-		assert(graph->frame.backbuffer != NULL);
-		assert(graph->frame.img_index != GPU_SWAPCHAIN_GRAPH_HASNT_CALLED_WAIT); // Did you forget to call GPU_GraphWait? Swapchaing graphs require it to be always called first.
+		GPU_ASSERT(graph->frame.backbuffer != NULL);
+		GPU_ASSERT(graph->frame.img_index != GPU_SWAPCHAIN_GRAPH_HASNT_CALLED_WAIT); // Did you forget to call GPU_GraphWait? Swapchaing graphs require it to be always called first.
 		backbuffer = &GPU_STATE.swapchain.textures[graph->frame.img_index];
 	}
 
@@ -2602,7 +2605,7 @@ GPU_API void GPU_OpBindComputeDescriptorSet(GPU_Graph* graph, GPU_DescriptorSet*
 }
 
 GPU_API void GPU_OpBeginRenderPass(GPU_Graph* graph) {
-	assert(graph->builder_state.preparing_render_pass != NULL);
+	GPU_ASSERT(graph->builder_state.preparing_render_pass != NULL);
 
 	GPU_RenderPass* render_pass = graph->builder_state.preparing_render_pass;
 	graph->builder_state.render_pass = render_pass;
@@ -2626,23 +2629,23 @@ GPU_API void GPU_OpBeginRenderPass(GPU_Graph* graph) {
 		GPU_TextureView target = render_to_swapchain ? backbuffer_or_null : render_pass->color_targets[i];
 
 		GPU_ResourceAccess access = { target.texture, GPU_ResourceKind_Texture, GPU_ResourceAccessFlag_ColorTargetRead | GPU_ResourceAccessFlag_ColorTargetWrite, 0, 1, target.mip_level, 1 };
-		assert(access.resource);
+		GPU_ASSERT(access.resource);
 		DS_ArrPush(&accesses, access);
 
 		GPU_TextureView resolve_target = render_to_swapchain ? backbuffer_or_null : render_pass->resolve_targets[i];
 		if (resolve_target.texture) {
 			GPU_ResourceAccess resolve_access = { resolve_target.texture, GPU_ResourceKind_Texture, GPU_ResourceAccessFlag_ColorTargetRead | GPU_ResourceAccessFlag_ColorTargetWrite, 0, 1, resolve_target.mip_level, 1 };
-			assert(resolve_access.resource);
+			GPU_ASSERT(resolve_access.resource);
 			DS_ArrPush(&accesses, resolve_access);
 		}
 	}
 
 	if (render_pass->depth_stencil_target) {
-		assert(!(render_pass->depth_stencil_target->flags & GPU_TextureFlag_HasMipmaps));
+		GPU_ASSERT(!(render_pass->depth_stencil_target->flags & GPU_TextureFlag_HasMipmaps));
 		// TODO: add support for rendering into a specific level/mip?
 
 		GPU_ResourceAccess access = { render_pass->depth_stencil_target, GPU_ResourceKind_Texture, GPU_ResourceAccessFlag_DepthStencilTargetWrite, 0, 1, 0, 1 };
-		assert(access.resource);
+		GPU_ASSERT(access.resource);
 		DS_ArrPush(&accesses, access);
 	}
 
@@ -2672,7 +2675,7 @@ GPU_API void GPU_OpBeginRenderPass(GPU_Graph* graph) {
 				if (binding_access->flags & GPU_AccessFlag_Write) access.access_flags |= GPU_ResourceAccessFlag_BufferWrite;
 			} break;
 			case GPU_ResourceKind_Texture: {
-				assert(binding_access->flags == GPU_AccessFlag_Read); // Textures can only be read
+				GPU_ASSERT(binding_access->flags == GPU_AccessFlag_Read); // Textures can only be read
 				access.access_flags |= GPU_ResourceAccessFlag_TextureRead;
 				access.layer_count = texture->base.layer_count;
 
@@ -2691,7 +2694,7 @@ GPU_API void GPU_OpBeginRenderPass(GPU_Graph* graph) {
 	}
 	GPU_InsertBarriers(graph, accesses.data, (uint32_t)accesses.count);
 
-	assert(graph->frame.img_index != GPU_NOT_A_SWAPCHAIN_GRAPH);
+	GPU_ASSERT(graph->frame.img_index != GPU_NOT_A_SWAPCHAIN_GRAPH);
 	uint32_t framebuffer_idx = render_to_swapchain ? graph->frame.img_index : 0;
 	
 	uint32_t width = render_pass->width;
@@ -2714,7 +2717,7 @@ GPU_API void GPU_OpBeginRenderPass(GPU_Graph* graph) {
 GPU_API void GPU_OpDispatch(GPU_Graph* graph, uint32_t group_count_x, uint32_t group_count_y, uint32_t group_count_z) {
 	GPU_ComputePipeline* pipeline = graph->builder_state.compute_pipeline;
 	GPU_DescriptorSet* desc_set = graph->builder_state.compute_descriptor_set;
-	assert(pipeline != NULL && desc_set != NULL);
+	GPU_ASSERT(pipeline != NULL && desc_set != NULL);
 
 	// TODO: if you do multiple dispatches in a row with the same pipeline & descriptor set, we can skip this step. Though, InsertBarriers() should currently do nothing in that case anyway.
 	DS_DynArray(GPU_ResourceAccess) accesses = { &graph->arena };
@@ -2742,7 +2745,7 @@ GPU_API void GPU_OpDispatch(GPU_Graph* graph, uint32_t group_count_x, uint32_t g
 		case GPU_ResourceKind_Sampler: break;
 		case GPU_ResourceKind_Texture: {
 			GPU_Texture* texture = (GPU_Texture*)binding_value.ptr;
-			assert(it.ptr->flags == GPU_AccessFlag_Read); // Textures can only be read from
+			GPU_ASSERT(it.ptr->flags == GPU_AccessFlag_Read); // Textures can only be read from
 			access_flags |= GPU_ResourceAccessFlag_TextureRead;
 
 			if (binding_value.mip_level == GPU_MIP_LEVEL_ALL) {
@@ -2773,18 +2776,18 @@ GPU_API void GPU_OpDraw(GPU_Graph* graph, uint32_t vertex_count, uint32_t instan
 }
 
 GPU_API void GPU_OpEndRenderPass(GPU_Graph* graph) {
-	assert(graph->builder_state.render_pass != NULL);
+	GPU_ASSERT(graph->builder_state.render_pass != NULL);
 	vkCmdEndRenderPass(graph->cmd_buffer);
 	graph->builder_state.render_pass = NULL;
 }
 
 GPU_API void GPU_OpBlit(GPU_Graph* graph, const GPU_OpBlitInfo* info) {
-	assert(graph->builder_state.render_pass == NULL); // You can't do this operation when inside OpBegin/EndRenderPass scope.
+	GPU_ASSERT(graph->builder_state.render_pass == NULL); // You can't do this operation when inside OpBegin/EndRenderPass scope.
 
 	if (info->dst_texture == info->src_texture) {
 		// You may not blit from a texture into itself, unless either the layer or mip-level differs in the source / destination.
 		// This decision is subject to change, as in Vulkan it would be technically allowed. However, the image layout would have to be made GENERAL rather than TRANSFER_SRC_OPTIMAL/TRANSFER_DST_OPTIMAL.
-		assert(info->dst_mip_level != info->src_mip_level || info->src_layer != info->dst_layer);
+		GPU_ASSERT(info->dst_mip_level != info->src_mip_level || info->src_layer != info->dst_layer);
 	}
 
 	GPU_ResourceAccess accesses[] = {
@@ -2821,7 +2824,7 @@ GPU_API void GPU_OpBlit(GPU_Graph* graph, const GPU_OpBlitInfo* info) {
 }
 
 GPU_API void GPU_OpClearColorF(GPU_Graph* graph, GPU_Texture* dst, uint32_t mip_level, float r, float g, float b, float a) {
-	assert(graph->builder_state.render_pass == NULL); // You can't do this operation when inside OpBegin/EndRenderPass scope.
+	GPU_ASSERT(graph->builder_state.render_pass == NULL); // You can't do this operation when inside OpBegin/EndRenderPass scope.
 	VkClearColorValue color;
 	color.float32[0] = r; color.float32[1] = g; color.float32[2] = b; color.float32[3] = a;
 
@@ -2843,7 +2846,7 @@ GPU_API void GPU_OpClearColorF(GPU_Graph* graph, GPU_Texture* dst, uint32_t mip_
 }
 
 GPU_API void GPU_OpClearColorI(GPU_Graph* graph, GPU_Texture* dst, uint32_t mip_level, uint32_t r, uint32_t g, uint32_t b, uint32_t a) {
-	assert(graph->builder_state.render_pass == NULL); // You can't do this operation when inside OpBegin/EndRenderPass scope.
+	GPU_ASSERT(graph->builder_state.render_pass == NULL); // You can't do this operation when inside OpBegin/EndRenderPass scope.
 	VkClearColorValue color;
 	color.uint32[0] = r; color.uint32[1] = g; color.uint32[2] = b; color.uint32[3] = a;
 
@@ -2865,9 +2868,9 @@ GPU_API void GPU_OpClearColorI(GPU_Graph* graph, GPU_Texture* dst, uint32_t mip_
 }
 
 GPU_API void GPU_OpClearDepthStencil(GPU_Graph* graph, GPU_Texture* dst, uint32_t mip_level) {
-	assert(graph->builder_state.render_pass == NULL); // You can't do this operation when inside OpBegin/EndRenderPass scope.
+	GPU_ASSERT(graph->builder_state.render_pass == NULL); // You can't do this operation when inside OpBegin/EndRenderPass scope.
 	GPU_FormatInfo format_info = GPU_GetFormatInfo(dst->format);
-	assert(format_info.depth_target);
+	GPU_ASSERT(format_info.depth_target);
 
 	uint32_t first_level = 0, level_count = dst->mip_level_count;
 	if (mip_level != GPU_MIP_LEVEL_ALL) {
@@ -2896,7 +2899,7 @@ GPU_API void GPU_OpPushComputeConstants(GPU_Graph* graph, GPU_PipelineLayout* pi
 }
 
 GPU_API void GPU_OpCopyBufferToBuffer(GPU_Graph* graph, GPU_Buffer* src, GPU_Buffer* dst, uint32_t dst_offset, uint32_t src_offset, uint32_t size) {
-	assert(graph->builder_state.render_pass == NULL); // You can't do this operation when inside OpBegin/EndRenderPass scope.
+	GPU_ASSERT(graph->builder_state.render_pass == NULL); // You can't do this operation when inside OpBegin/EndRenderPass scope.
 
 	GPU_ResourceAccess accesses[] = {
 		{src, GPU_ResourceKind_Buffer, GPU_ResourceAccessFlag_TransferRead, 0, 1, 0, 1},
@@ -2909,7 +2912,7 @@ GPU_API void GPU_OpCopyBufferToBuffer(GPU_Graph* graph, GPU_Buffer* src, GPU_Buf
 }
 
 GPU_API void GPU_OpCopyBufferToTexture(GPU_Graph* graph, GPU_Buffer* src, GPU_Texture* dst, uint32_t dst_first_layer, uint32_t dst_layer_count, uint32_t dst_mip_level) {
-	assert(graph->builder_state.render_pass == NULL); // You can't do this operation when inside OpBegin/EndRenderPass scope.
+	GPU_ASSERT(graph->builder_state.render_pass == NULL); // You can't do this operation when inside OpBegin/EndRenderPass scope.
 
 	GPU_ResourceAccess accesses[] = {
 		{src, GPU_ResourceKind_Buffer, GPU_ResourceAccessFlag_TransferRead, 0, 1, 0, 1},
@@ -2928,7 +2931,7 @@ GPU_API void GPU_OpCopyBufferToTexture(GPU_Graph* graph, GPU_Buffer* src, GPU_Te
 }
 
 GPU_API void GPU_OpCopyTextureToBuffer(GPU_Graph* graph, GPU_Texture* src, GPU_Buffer* dst) {
-	assert(graph->builder_state.render_pass == NULL); // You can't do this operation when inside OpBegin/EndRenderPass scope.
+	GPU_ASSERT(graph->builder_state.render_pass == NULL); // You can't do this operation when inside OpBegin/EndRenderPass scope.
 
 	GPU_ResourceAccess accesses[] = {
 		{src, GPU_ResourceKind_Texture, GPU_ResourceAccessFlag_TransferRead, 0, 1, 0, 1},
@@ -2949,14 +2952,14 @@ GPU_API void GPU_OpCopyTextureToBuffer(GPU_Graph* graph, GPU_Texture* src, GPU_B
 }
 
 GPU_API void GPU_OpPrepareRenderPass(GPU_Graph* graph, GPU_RenderPass* render_pass) {
-	assert(graph->builder_state.preparing_render_pass == NULL && graph->builder_state.render_pass == NULL);
+	GPU_ASSERT(graph->builder_state.preparing_render_pass == NULL && graph->builder_state.render_pass == NULL);
 
 	graph->builder_state.preparing_render_pass = render_pass;
 	DS_ArrClear(&graph->builder_state.prepared_draw_params);
 }
 
 GPU_API uint32_t GPU_OpPrepareDrawParams(GPU_Graph* graph, GPU_GraphicsPipeline* pipeline, GPU_DescriptorSet* descriptor_set) {
-	assert(graph->builder_state.preparing_render_pass != NULL);
+	GPU_ASSERT(graph->builder_state.preparing_render_pass != NULL);
 
 	uint32_t idx = (uint32_t)graph->builder_state.prepared_draw_params.count;
 	GPU_DrawParams draw_params = { pipeline, descriptor_set };
