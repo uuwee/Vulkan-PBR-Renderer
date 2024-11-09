@@ -107,6 +107,7 @@ int main() {
 		}
 	}
 
+	GPU_WaitUntilIdle();
 	GPU_DestroyGraph(graphs[0]);
 	GPU_DestroyGraph(graphs[1]);
 

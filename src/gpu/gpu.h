@@ -449,7 +449,7 @@ GPU_API void GPU_DestroyComputePipeline(GPU_ComputePipeline* pipeline);
 
 GPU_API GPU_Graph* GPU_MakeGraph(void);
 GPU_API void GPU_GraphSubmit(GPU_Graph* graph); // Submit a graph to the GPU, but do not wait for it to complete
-GPU_API void GPU_GraphWait(GPU_Graph* graph); // Wait will also implicitly reset the graph and its descriptor arena if it has one.
+GPU_API void GPU_GraphWait(GPU_Graph* graph); // Wait will also implicitly reset the graph
 GPU_API void GPU_DestroyGraph(GPU_Graph* graph); // You may only destroy a graph when the GPU is not working on it.
 
 // NOTE: You may only have one set of swapchain graphs alive at once.
