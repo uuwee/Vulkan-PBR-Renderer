@@ -384,12 +384,12 @@ static void GPU_PrintI(GPU_StrBuilder* builder, int64_t value) {
 	GPU_PrintS(builder, str);
 }
 
-static void GPU_CheckVK(VkResult err) {
-	if (err != 0) {
-		fprintf(stderr, "GPU-ERROR: Vulkan API call returned VkResult: %d\n", err);
-		GPU_ASSERT(false);
+#define GPU_CheckVK(VK_RESULT) \
+	VkResult DS_Concat(_res, __LINE__) = VK_RESULT; \
+	if (DS_Concat(_res, __LINE__) != 0) { \
+		fprintf(stderr, "GPU-ERROR: Vulkan API call returned VkResult: %d\n", DS_Concat(_res, __LINE__)); \
+		GPU_ASSERT(false); \
 	}
-}
 
 VKAPI_ATTR static VkBool32 GPU_DebugReport(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType,
 	uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData)
@@ -2569,7 +2569,9 @@ GPU_API void GPU_GraphSubmit(GPU_Graph* graph) {
 		present_info.pImageIndices = &graph->frame.img_index;
 
 		VkResult result = vkQueuePresentKHR(GPU_STATE.queue, &present_info);
-		if (result != VK_ERROR_OUT_OF_DATE_KHR && result != VK_SUBOPTIMAL_KHR) GPU_CheckVK(result);
+		if (result != VK_ERROR_OUT_OF_DATE_KHR && result != VK_SUBOPTIMAL_KHR) {
+			GPU_CheckVK(result);
+		}
 	}
 
 	DS_ProfExit();
