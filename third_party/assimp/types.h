@@ -264,7 +264,8 @@ struct aiColor3D {
  *  the terminating zero).
 */
 struct aiString {
-#ifdef __cplusplus
+#if 0
+//#ifdef __cplusplus
     /** Default constructor, the string is set to have zero length */
     aiString() AI_NO_EXCEPT
             : length(0) {

@@ -54,7 +54,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <assimp/vector3.h>
 #include <assimp/defs.h>
 
-#ifdef __cplusplus
+#if 0//#ifdef __cplusplus
 
 template<typename TReal> class aiMatrix3x3t;
 template<typename TReal> class aiQuaterniont;

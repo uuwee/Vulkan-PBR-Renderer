@@ -1934,7 +1934,7 @@ static glsl_include_result_t* GPU_IncludeHandlerGLSL(void* ctx, const char* head
 	if (ctx_->includer == NULL) return NULL;
 
 	GPU_String source;
-	GPU_String header_name = { (char*)header_name_cstr, (int)strlen(header_name_cstr) };
+	GPU_String header_name = { (char*)header_name_cstr, strlen(header_name_cstr) };
 	bool ok = ctx_->includer(ctx_->temp, header_name, &source, ctx_->includer_ctx);
 
 	glsl_include_result_t result = {0};
@@ -2102,7 +2102,7 @@ GPU_API GPU_String GPU_SPIRVFromGLSL(DS_Arena* arena, GPU_ShaderStage stage, GPU
 		result.length = size_in_dwords * sizeof(uint32_t);
 	}
 	else {
-		GPU_String log = { (char*)log_cstr, (int)strlen(log_cstr) };
+		GPU_String log = { (char*)log_cstr, strlen(log_cstr) };
 
 		int gen_glsl_line_count = 0, desc_glsl_line_count = 0;
 

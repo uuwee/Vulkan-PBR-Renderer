@@ -154,7 +154,8 @@ struct aiMetadata {
       * corresponding property key has no assigned value. */
     C_STRUCT aiMetadataEntry *mValues;
 
-#ifdef __cplusplus
+#if 0
+//#ifdef __cplusplus
 
     /**
      *  @brief  The default constructor, set all members to zero by default.

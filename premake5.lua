@@ -8,6 +8,9 @@ project "PBR-Renderer"
 	language "C++"
 	targetdir "build"
 	
+	flags "FatalWarnings" -- treat warnings as errors
+	linkoptions { "-IGNORE:4099" } -- disable "PDB was not found ...; linking object as if no debug info" warning
+	
 	-- /MD
 	staticruntime "off"
 	runtime "Release"
@@ -22,7 +25,7 @@ project "PBR-Renderer"
 		"third_party/**",
 	}
 	
-	-- To enable vulkan validation layers, uncomment the following:
+	-- To enable vulkan validation, uncomment the following:
 	-- defines "GPU_ENABLE_VALIDATION"
 	
 	-- Add vulkan SDK
@@ -44,6 +47,13 @@ project "Triangle"
 	language "C++"
 	targetdir "build"
 	
+	flags "FatalWarnings" -- treat warnings as errors
+	linkoptions { "-IGNORE:4099" } -- disable "PDB was not found ...; linking object as if no debug info" warning
+	
+	-- /MD
+	staticruntime "off"
+	runtime "Release"
+	
 	includedirs { "src", "third_party" }
 
 	files {
@@ -54,7 +64,7 @@ project "Triangle"
 		"third_party/**",
 	}
 	
-	-- To enable vulkan validation layers, uncomment the following:
+	-- To enable vulkan validation, uncomment the following:
 	-- defines "GPU_ENABLE_VALIDATION"
 	
 	-- Add vulkan SDK

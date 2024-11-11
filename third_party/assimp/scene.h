@@ -352,7 +352,8 @@ struct aiScene
      */
     C_STRUCT aiSkeleton **mSkeletons;
 
-#ifdef __cplusplus
+#if 0
+//#ifdef __cplusplus
 
     //! Default constructor - set everything to 0/nullptr
     ASSIMP_API aiScene();

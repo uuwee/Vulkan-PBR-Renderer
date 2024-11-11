@@ -294,7 +294,8 @@ struct aiBone {
      */
     C_STRUCT aiMatrix4x4 mOffsetMatrix;
 
-#ifdef __cplusplus
+#if 0
+//#ifdef __cplusplus
 
     ///	@brief  Default constructor
     aiBone() AI_NO_EXCEPT
