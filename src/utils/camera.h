@@ -36,7 +36,7 @@ struct Camera {
 	#endif
 };
 
-static void UpdateCamera(Camera* camera, const Input::Frame& inputs, float movement_speed, float mouse_speed,
+static void UpdateCamera(Camera* camera, float frame_dt, const Input::Frame& inputs, float movement_speed, float mouse_speed,
 	float FOV_degrees, float aspect_ratio_x_over_y, float z_near, float z_far)
 {
 	if (camera->ori.X == 0 && camera->ori.Y == 0 && camera->ori.Z == 0 && camera->ori.W == 0) { // reset ori?
@@ -72,22 +72,22 @@ static void UpdateCamera(Camera* camera, const Input::Frame& inputs, float movem
 			movement_speed *= 0.1f;
 		}
 		if (inputs.KeyIsDown(Input::Key::W)) {
-			camera->pos = camera->pos + camera->GetForward() * movement_speed;
+			camera->pos = camera->pos + camera->GetForward() * movement_speed * frame_dt;
 		}
 		if (inputs.KeyIsDown(Input::Key::S)) {
-			camera->pos = camera->pos + camera->GetForward() * -movement_speed;
+			camera->pos = camera->pos + camera->GetForward() * -movement_speed * frame_dt;
 		}
 		if (inputs.KeyIsDown(Input::Key::D)) {
-			camera->pos = camera->pos + camera->GetRight() * movement_speed;
+			camera->pos = camera->pos + camera->GetRight() * movement_speed * frame_dt;
 		}
 		if (inputs.KeyIsDown(Input::Key::A)) {
-			camera->pos = camera->pos + camera->GetRight() * -movement_speed;
+			camera->pos = camera->pos + camera->GetRight() * -movement_speed * frame_dt;
 		}
 		if (inputs.KeyIsDown(Input::Key::E)) {
-			camera->pos = camera->pos + HMM_V3(0, 0, movement_speed);
+			camera->pos = camera->pos + HMM_V3(0, 0, movement_speed * frame_dt);
 		}
 		if (inputs.KeyIsDown(Input::Key::Q)) {
-			camera->pos = camera->pos + HMM_V3(0, 0, -movement_speed);
+			camera->pos = camera->pos + HMM_V3(0, 0, -movement_speed * frame_dt);
 		}
 	}
 
