@@ -19,6 +19,7 @@ project "PBR-Renderer"
 	
 	SpecifyWarnings()
 	
+	-- /MD
 	staticruntime "off"
 	runtime "Release"
 
