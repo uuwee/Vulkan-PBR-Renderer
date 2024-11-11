@@ -92,6 +92,7 @@ int main() {
 		GPU_Graph* graph = graphs[graph_idx];
 		GPU_GraphWait(graph);
 
+		// Draw
 		GPU_Texture* backbuffer = GPU_GetBackbuffer(graph);
 		if (backbuffer) {
 			BuildRenderCommands(&renderer, graph, backbuffer, &world, &skybox, camera, render_params);
