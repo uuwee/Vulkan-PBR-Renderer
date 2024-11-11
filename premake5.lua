@@ -1,3 +1,12 @@
+
+function SpecifyWarnings()
+	flags "FatalWarnings" -- treat all warnings as errors
+	buildoptions "/w14062" -- error on unhandled enum members in switch cases
+	buildoptions "/w14456" -- error on shadowed locals
+	buildoptions "/wd4101" -- allow unused locals
+	linkoptions "-IGNORE:4099" -- disable linker warning: "PDB was not found ...; linking object as if no debug info"
+end
+
 workspace "VulkanRenderer"
 	architecture "x64"
 	configurations { "Debug", "Release" }
@@ -8,10 +17,8 @@ project "PBR-Renderer"
 	language "C++"
 	targetdir "build"
 	
-	flags "FatalWarnings" -- treat warnings as errors
-	linkoptions { "-IGNORE:4099" } -- disable "PDB was not found ...; linking object as if no debug info" warning
+	SpecifyWarnings()
 	
-	-- /MD
 	staticruntime "off"
 	runtime "Release"
 
@@ -47,8 +54,7 @@ project "Triangle"
 	language "C++"
 	targetdir "build"
 	
-	flags "FatalWarnings" -- treat warnings as errors
-	linkoptions { "-IGNORE:4099" } -- disable "PDB was not found ...; linking object as if no debug info" warning
+	SpecifyWarnings()
 	
 	-- /MD
 	staticruntime "off"

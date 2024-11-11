@@ -37,7 +37,7 @@ int main() {
 	
 	RenderObject world = LoadMesh(&renderer, "../resources/SunTemple/SunTemple.fbx", {0.f, 25.f, 0.f}, 1.f);
 
-	// Loading bistro:
+	// If you want to load Bistro, replace the line above with one of the following:
 	//RenderObject world = LoadMesh(&renderer, "C:/art_library/Bistro_v5_2/BistroInterior.fbx", {-7.f, -4.f, 0.f}, 4.2f);
 	//RenderObject world = LoadMesh(&renderer, "C:/art_library/Bistro_v5_2/BistroExterior.fbx", {-7.f, -4.f, 0.f}, 1.f);
 
