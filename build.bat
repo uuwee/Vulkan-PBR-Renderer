@@ -1,0 +1,1 @@
+msbuild ./build_projects/VulkanRenderer.sln /p:Configuration=Release /p:Platform=x64
